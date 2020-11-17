@@ -16,11 +16,6 @@ defmodule PhoenixView.MixProject do
   def application do
     [
       extra_applications: [:eex],
-      env: [
-        template_engines: [],
-        format_encoders: [],
-        trim_on_html_eex_engine: true
-      ]
     ]
   end
 

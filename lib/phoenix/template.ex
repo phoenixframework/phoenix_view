@@ -204,22 +204,26 @@ defmodule Phoenix.Template do
   end
 
   defp compiled_format_encoders do
-    case Application.fetch_env(:phoenix, :compiled_format_encoders) do
+    case Application.fetch_env(:phoenix_view, :compiled_format_encoders) do
       {:ok, encoders} ->
         encoders
       :error ->
         encoders =
           default_encoders()
-          |> Keyword.merge(raw_config(:format_encoders))
+          |> Keyword.merge(raw_config(:format_encoders, []))
           |> Enum.filter(fn {_, v} -> v end)
           |> Enum.into(%{}, fn {k, v} -> {".#{k}", v} end)
-        Application.put_env(:phoenix, :compiled_format_encoders, encoders)
+        Application.put_env(:phoenix_view, :compiled_format_encoders, encoders)
         encoders
     end
   end
 
   defp default_encoders do
-    [html: Phoenix.HTML.Engine, json: Phoenix.json_library(), js: Phoenix.HTML.Engine]
+    [html: Phoenix.HTML.Engine, json: json_library(), js: Phoenix.HTML.Engine]
+  end
+
+  defp json_library() do
+    Application.get_env(:phoenix_view, :json_library) || Application.get_env(:phoenix, :json_library, Poison)
   end
 
   @doc """
@@ -232,26 +236,22 @@ defmodule Phoenix.Template do
   end
 
   defp compiled_engines do
-    case Application.fetch_env(:phoenix, :compiled_template_engines) do
+    case Application.fetch_env(:phoenix_view, :compiled_template_engines) do
       {:ok, engines} ->
         engines
       :error ->
         engines =
           @engines
-          |> Keyword.merge(raw_config(:template_engines))
+          |> Keyword.merge(raw_config(:template_engines, []))
           |> Enum.filter(fn {_, v} -> v end)
           |> Enum.into(%{})
-        Application.put_env(:phoenix, :compiled_template_engines, engines)
+        Application.put_env(:phoenix_view, :compiled_template_engines, engines)
         engines
     end
   end
 
-  defp raw_config(name) do
-    Application.get_env(:phoenix, name) ||
-      raise "could not load #{name} configuration for Phoenix. " <>
-            "Please ensure you have listed :phoenix under :applications in your " <>
-            "mix.exs file and have enabled the :phoenix compiler under :compilers, " <>
-            "for example: [:phoenix] ++ Mix.compilers"
+  defp raw_config(name, fallback) do
+    Application.get_env(:phoenix_view, name) || Application.get_env(:phoenix, name, fallback)
   end
 
   @doc """
@@ -295,10 +295,10 @@ defmodule Phoenix.Template do
   """
   def module_to_template_root(module, base, suffix) do
     module
-    |> Phoenix.Naming.unsuffix(suffix)
+    |> unsuffix(suffix)
     |> Module.split
     |> Enum.drop(length(Module.split(base)))
-    |> Enum.map(&Phoenix.Naming.underscore/1)
+    |> Enum.map(&Macro.underscore/1)
     |> join_paths
   end
 
@@ -339,6 +339,27 @@ defmodule Phoenix.Template do
       root: root,
       pattern: pattern,
       module: view_module
+  end
+
+  @doc false
+  def resource_name(alias, suffix \\ "") do
+    alias
+    |> to_string()
+    |> Module.split()
+    |> List.last()
+    |> unsuffix(suffix)
+    |> Macro.underscore()
+  end
+
+  @doc false
+  defp unsuffix(value, suffix) do
+    string = to_string(value)
+    suffix_size = byte_size(suffix)
+    prefix_size = byte_size(string) - suffix_size
+    case string do
+      <<prefix::binary-size(prefix_size), ^suffix::binary>> -> prefix
+      _ -> string
+    end
   end
 
   defp compile(path, root, engines) do

@@ -141,7 +141,7 @@ defmodule Phoenix.View do
             "use Phoenix.View is being called twice in the module #{module}. " <>
               "Make sure to call it only once per module"
     else
-      view_resource = String.to_atom(Phoenix.Naming.resource_name(module, "View"))
+      view_resource = String.to_atom(Phoenix.Template.resource_name(module, "View"))
       Module.put_attribute(module, :view_resource, view_resource)
     end
 
@@ -150,7 +150,7 @@ defmodule Phoenix.View do
       use Phoenix.Template, Phoenix.View.__template_options__(__MODULE__, unquote(opts))
 
       @before_compile Phoenix.View
-      @view_resource String.to_atom(Phoenix.Naming.resource_name(__MODULE__, "View"))
+      @view_resource String.to_atom(Phoenix.Template.resource_name(__MODULE__, "View"))
 
       @doc """
       Renders the given template locally.
