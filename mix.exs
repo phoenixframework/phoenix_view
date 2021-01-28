@@ -12,19 +12,16 @@ defmodule PhoenixView.MixProject do
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
   def application do
     [
       extra_applications: [:eex],
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
       {:jason, "~> 1.0", optional: true},
       {:phoenix_html, "~> 2.14.2 or ~> 2.15"},
-
       {:ex_doc, "~> 0.22", only: :docs},
     ]
   end
