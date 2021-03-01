@@ -174,19 +174,12 @@ defmodule Phoenix.View do
     end
   end
 
-
-  @anno (if :erlang.system_info(:otp_release) >= '19' do
-    [generated: true]
-  else
-    [line: -1]
-  end)
-
   @doc false
   defmacro __before_compile__(_env) do
     # We are using @anno because we don't want warnings coming from
     # render/2 to be reported in case the user has defined a catch-all
     # render/2 clause.
-    quote @anno do
+    quote generated: true do
       # Catch-all clause for rendering.
       def render(template, assigns) do
         render_template(template, assigns)
