@@ -1,21 +1,18 @@
-# PhoenixView
+# Phoenix.View
 
-**TODO: Add description**
+Defines the view layer of a Phoenix application.
+
+See the [`Phoenix.View`](https://hexdocs.pm/phoenix_view/Phoenix.View.html) module documentation
+for more information.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `phoenix_view` to your list of dependencies in `mix.exs`:
+You can install `phoenix_view` by adding it to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:phoenix_view, "~> 0.1.0"}
+    {:phoenix_view, "~> 1.0"}
   ]
 end
 ```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/phoenix_view](https://hexdocs.pm/phoenix_view).
-
