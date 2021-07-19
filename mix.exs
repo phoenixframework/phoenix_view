@@ -26,7 +26,8 @@ defmodule PhoenixView.MixProject do
     [
       main: "Phoenix.View",
       source_url: @source_url,
-      source_ref: "v#{@version}"
+      source_ref: "v#{@version}",
+      extras: ["CHANGELOG.md"]
     ]
   end
 
@@ -42,8 +43,7 @@ defmodule PhoenixView.MixProject do
     [
       maintainers: ["Chris McCord", "José Valim", "Gary Rennie"],
       licenses: ["MIT"],
-      links: %{github: "https://github.com/phoenixframework/phoenix_view"},
-      files: ~w(lib mix.exs .formatter.exs)
+      links: %{"GitHub" => @source_url}
     ]
   end
 end
