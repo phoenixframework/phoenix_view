@@ -2,10 +2,7 @@ defmodule Phoenix.View do
   @moduledoc """
   Defines the view layer of a Phoenix application.
 
-  This module is used to define the application's main view, which
-  serves as the base for all other views and templates.
-
-  The view layer also contains conveniences for rendering templates,
+  The view layer contains conveniences for rendering templates,
   including support for layouts and encoders per format.
 
   ## Examples
@@ -43,42 +40,58 @@ defmodule Phoenix.View do
         use YourAppWeb, :view
       end
 
-  Because we have defined the template root to be "lib/your_app_web/templates", `Phoenix.View`
-  will automatically load all templates at "your_app_web/templates/user" and include them
-  in the `YourApp.UserView`. For example, imagine we have the template:
+  Because we have defined the template root to be "lib/your_app_web/templates",
+  `Phoenix.View` will automatically load all templates at "your_app_web/templates/user"
+  and include them in the `YourApp.UserView`. For example, imagine we have the
+  template:
 
-      # your_app_web/templates/user/index.html.eex
+      # your_app_web/templates/user/index.html.heex
       Hello <%= @name %>
 
-  The `.eex` extension maps to a template engine which tells Phoenix how
+  The `.heex` extension maps to a template engine which tells Phoenix how
   to compile the code in the file into Elixir source code. After it is
   compiled, the template can be rendered as:
 
-      Phoenix.View.render(YourApp.UserView, "index.html", name: "John Doe")
-      #=> {:safe, "Hello John Doe"}
+      Phoenix.View.render_to_string(YourApp.UserView, "index.html", name: "John Doe")
+      #=> "Hello John Doe"
 
-  ## Rendering
+  ## Differences to `Phoenix.LiveView`
+
+  Traditional web applications, that rely on a request/response life cycle,
+  have been typically organized under the Model-View-Controller pattern.
+  In this case, the Controller is responsible for organizing interacting
+  with the model and passing all relevant information to the View for
+  rendering. `Phoenix.Controller` and `Phoenix.View` play those roles
+  respectively.
+
+  `Phoenix.LiveView` introduces a declarative model where the controller
+  and the view are kept side by side. This empowers `Phoenix.LiveView`
+  to provide realtime and interactive features under a stateful connection.
+
+  In other words, you may consider that `Phoenix.LiveView` abridges both
+  `Phoenix.Controller` and `Phoenix.View` responsibilities. Developers
+  do not generally use `Phoenix.View` from their live views, but LiveView
+  does use `Phoenix.View` and its features under the scenes.
+
+  ## Rendering and formats
 
   The main responsibility of a view is to render a template.
 
   A template has a name, which also contains a format. For example,
   in the previous section we have rendered the "index.html" template:
 
+      Phoenix.View.render_to_string(YourApp.UserView, "index.html", name: "John Doe")
+      #=> "Hello John Doe"
+
+  While we got a string at the end, that's not actually what our templates
+  render. Let's take a deeper look:
+
       Phoenix.View.render(YourApp.UserView, "index.html", name: "John Doe")
-      #=> {:safe, "Hello John Doe"}
+      #=> ...
 
-  When a view renders a template, the result returned is an inner
-  representation specific to the template format. In the example above,
-  we got: `{:safe, "Hello John Doe"}`. The safe tuple annotates that our
-  template is safe and that we don't need to escape its contents because
-  all data has already been encoded. Let's try to inject custom code:
-
-      Phoenix.View.render(YourApp.UserView, "index.html", name: "John<br/>Doe")
-      #=> {:safe, "Hello John&lt;br/&gt;Doe"}
-
-  This inner representation allows us to render and compose templates easily.
-  For example, if you want to render JSON data, we could do so by adding a
-  "show.json" entry to `render/2` in our view:
+  This inner representation allows us to separate how templates render and
+  how they are encoded. For example, if you want to render JSON data, we
+  could do so by adding a "show.json" entry to `render/2` in our view:
 
       defmodule YourApp.UserView do
         use YourApp.View
@@ -90,17 +103,19 @@ defmodule Phoenix.View do
 
   Notice that in order to render JSON data, we don't need to explicitly
   return a JSON string! Instead, we just return data that is encodable to
-  JSON.
+  JSON. Now, when we call:
+  
+      Phoenix.View.render_to_string(YourApp.UserView, "user.json", user: %User{...})
 
-  Both JSON and HTML formats will be encoded only when passing the data
-  to the controller via the `render_to_iodata/3` function. The
-  `render_to_iodata/3` function uses the notion of format encoders to convert a
-  particular format to its string/iodata representation.
+  Because the template has the `.json` extension, Phoenix knows how to
+  encode the map returned for the "user.json" template into an actual
+  JSON payload to be sent over the wire.
 
   Phoenix ships with some template engines and format encoders, which
   can be further configured in the Phoenix application. You can read
   more about format encoders in `Phoenix.Template` documentation.
   """
+
   alias Phoenix.{Template}
 
   @doc """
@@ -194,7 +209,7 @@ defmodule Phoenix.View do
   This can be useful to implement nested layouts. For example,
   imagine you have an application layout like this:
 
-      # layout/app.html.eex
+      # layout/app.html.heex
       <html>
       <head>
         <title>Title</title>
@@ -209,7 +224,7 @@ defmodule Phoenix.View do
   a sidebar. Let's call it "blog.html". You can build on top of the
   existing layout in two steps. First, define the blog layout:
 
-      # layout/blog.html.eex
+      # layout/blog.html.heex
       <%= render_layout LayoutView, "app.html", assigns do %>
         <div class="sidebar">...</div>
         <%= @inner_content %>
@@ -298,50 +313,71 @@ defmodule Phoenix.View do
   @doc """
   Renders a template only if it exists.
 
-  Same as `render/3`, but returns `nil` instead of raising.
-  This is often used with `Phoenix.Controller.view_module/1`
-  and `Phoenix.Controller.view_template/1`, which must be
-  imported into your views. See the "Examples" section below.
+  > Note: Using this functionality has been discouraged in
+  > recent Phoenix versions, see the "Alternatives" section
+  > below.
 
-  ## Examples
+  This function works the same as `render/3`, but returns
+  `nil` instead of raising. This is often used with
+  `Phoenix.Controller.view_module/1` and `Phoenix.Controller.view_template/1`,
+  which must be imported into your views. See the "Examples"
+  section below.
 
-  Consider the case where the application layout allows views to dynamically
-  render a section of script tags in the head of the document. Some views
-  may wish to inject certain scripts, while others will not.
+  ## Alternatives
 
-      <head>
-        <%= render_existing view_module(@conn), "scripts.html", assigns %>
-      </head>
+  This function is discouraged. If you need to render something
+  conditionally, the simplest way is to check for an optional
+  function in your views.
 
-  Then the module under `view_module(@conn)` can decide to provide scripts with
-  either a precompiled template, or by implementing the function directly, ie:
+  Consider the case where the application has a sidebar in its
+  layout and it wants certain views to render additional buttons
+  in the sidebar. Inside your sidebar, you could do:
 
-      def render("scripts.html", _assigns) do
-        ~E(<script src="file.js"></script>)
+      <div class="sidebar">
+        <%= if function_exported?(view_module(@conn), :sidebar_additions, 1) do
+          <%= view_module(@conn).sidebar_additions(assigns) %>
+        <% end %>
+      </div>
+
+  If you are using Phoenix.LiveView, you could do similar by
+  accessing the view under `@socket`:
+
+      <div class="sidebar">
+        <%= if function_exported?(@socket.view, :sidebar_additions, 1) do
+          <%= @socket.view.sidebar_additions(assigns) %>
+        <% end %>
+      </div>
+  
+  Then, in your view or live view, you do:
+
+      def sidebar_additions(assigns) do
+        ~H"""
+        ...my additional buttons...
+        """
+
+  ## Using render_existing
+
+  Consider the case where the application wants to allow entries
+  to be added to a sidebar. This feature could be achieved with:
+
+      <%= render_existing view_module(@conn), "sidebar_additions.html", assigns %>
+
+  Then the module under `view_module(@conn)` can decide to provide
+  scripts with either a precompiled template, or by implementing the
+  function directly, ie:
+
+      def render("sidebar_additions.html", _assigns) do
+        ~H"""
+        ...my additional buttons...
+        """
       end
 
-  To use a precompiled template, create a `scripts.html.eex` file in the `templates`
-  directory for the corresponding view you want it to render for. For example,
-  for the `UserView`, create the `scripts.html.eex` file at `your_app_web/templates/user/`.
-
-  ## Rendering based on controller template
-
-  In some cases, you might need to render based on the template.
-  For these cases, `Phoenix.Controller.view_template/1` can pair with
-  `render_existing/3` for per-template based content, ie:
-
-      <head>
-        <%= render_existing view_module(@conn), "scripts." <> view_template(@conn), assigns %>
-      </head>
-
-      def render("scripts.show.html", _assigns) do
-        ~E(<script src="file.js"></script>)
-      end
-      def render("scripts.index.html", _assigns) do
-        ~E(<script src="file.js"></script>)
-      end
-
+  To use a precompiled template, create a `scripts.html.eex` file in
+  the `templates` directory for the corresponding view you want it to
+  render for. For example, for the `UserView`, create the `scripts.html.eex`
+  file at `your_app_web/templates/user/`.
   """
+  @doc deprecated: "Use function_exported?/3 instead"
   def render_existing(module, template, assigns \\ []) do
     assigns = assigns |> Map.new() |> Map.put(:__phx_render_existing__, {module, template})
     render(module, template, assigns)
