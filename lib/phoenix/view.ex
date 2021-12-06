@@ -104,7 +104,7 @@ defmodule Phoenix.View do
   Notice that in order to render JSON data, we don't need to explicitly
   return a JSON string! Instead, we just return data that is encodable to
   JSON. Now, when we call:
-  
+
       Phoenix.View.render_to_string(YourApp.UserView, "user.json", user: %User{...})
 
   Because the template has the `.json` extension, Phoenix knows how to
@@ -177,7 +177,7 @@ defmodule Phoenix.View do
       end
 
       def render(template, _assigns) when not is_binary(template) do
-        raise ArgumentError, "render/2 expects template to be a string, got: #{inspect template}"
+        raise ArgumentError, "render/2 expects template to be a string, got: #{inspect(template)}"
       end
 
       def render(template, assigns) when not is_map(assigns) do
@@ -347,7 +347,7 @@ defmodule Phoenix.View do
           <%= @socket.view.sidebar_additions(assigns) %>
         <% end %>
       </div>
-  
+
   Then, in your view or live view, you do:
 
       def sidebar_additions(assigns) do
@@ -413,6 +413,7 @@ defmodule Phoenix.View do
   def render_many(collection, view, template, assigns \\ %{}) do
     assigns = Map.new(assigns)
     resource_name = get_resource_name(assigns, view)
+
     Enum.map(collection, fn resource ->
       render(view, template, Map.put(assigns, resource_name, resource))
     end)
@@ -446,9 +447,10 @@ defmodule Phoenix.View do
   """
   def render_one(resource, view, template, assigns \\ %{})
   def render_one(nil, _view, _template, _assigns), do: nil
+
   def render_one(resource, view, template, assigns) do
     assigns = Map.new(assigns)
-    render view, template, assign_resource(assigns, view, resource)
+    render(view, template, assign_resource(assigns, view, resource))
   end
 
   @compile {:inline, [get_resource_name: 2]}
@@ -475,7 +477,7 @@ defmodule Phoenix.View do
   Renders the template and returns a string.
   """
   def render_to_string(module, template, assign) do
-    render_to_iodata(module, template, assign) |> IO.iodata_to_binary
+    render_to_iodata(module, template, assign) |> IO.iodata_to_binary()
   end
 
   defp encode(content, template) do
@@ -501,7 +503,9 @@ defmodule Phoenix.View do
         |> Module.concat()
       end
 
-    root_path = Path.join(root, path || Template.module_to_template_root(module, namespace, "View"))
+    root_path =
+      Path.join(root, path || Template.module_to_template_root(module, namespace, "View"))
+
     [root: root_path] ++ Keyword.take(opts, [:pattern, :template_engines])
   end
 end

@@ -7,7 +7,7 @@ defmodule Phoenix.Template.ExsEngine do
 
   def compile(path, _name) do
     path
-    |> File.read!
+    |> File.read!()
     |> Code.string_to_quoted!(file: path)
   end
 end
