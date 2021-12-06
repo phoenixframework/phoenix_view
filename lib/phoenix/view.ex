@@ -310,7 +310,7 @@ defmodule Phoenix.View do
     """
   end
 
-  @doc """
+  @doc ~S'''
   Renders a template only if it exists.
 
   > Note: Using this functionality has been discouraged in
@@ -351,9 +351,9 @@ defmodule Phoenix.View do
   Then, in your view or live view, you do:
 
       def sidebar_additions(assigns) do
-        ~H"""
+        ~H\"""
         ...my additional buttons...
-        """
+        \"""
 
   ## Using render_existing
 
@@ -376,7 +376,7 @@ defmodule Phoenix.View do
   the `templates` directory for the corresponding view you want it to
   render for. For example, for the `UserView`, create the `scripts.html.eex`
   file at `your_app_web/templates/user/`.
-  """
+  '''
   @doc deprecated: "Use function_exported?/3 instead"
   def render_existing(module, template, assigns \\ []) do
     assigns = assigns |> Map.new() |> Map.put(:__phx_render_existing__, {module, template})
