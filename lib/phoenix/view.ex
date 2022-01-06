@@ -377,7 +377,7 @@ defmodule Phoenix.View do
   render for. For example, for the `UserView`, create the `scripts.html.eex`
   file at `your_app_web/templates/user/`.
   '''
-  @doc deprecated: "Use function_exported?/3 instead"
+  @deprecated "Use function_exported?/3 instead"
   def render_existing(module, template, assigns \\ []) do
     assigns = assigns |> Map.new() |> Map.put(:__phx_render_existing__, {module, template})
     render(module, template, assigns)
