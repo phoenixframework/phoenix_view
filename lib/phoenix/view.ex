@@ -14,7 +14,7 @@ defmodule Phoenix.View do
 
         def view do
           quote do
-            use Phoenix.View, root: "lib/your_app_web/templates", namespace: "web"
+            use Phoenix.View, root: "lib/your_app_web/templates", namespace: YourAppWeb
 
             # Import convenience functions from controllers
             import Phoenix.Controller,
@@ -149,23 +149,18 @@ defmodule Phoenix.View do
   the template to also be looked up at `Path.join(root, "user")`.
   """
   defmacro __using__(opts) do
-    %{module: module} = __CALLER__
-
-    if Module.get_attribute(module, :view_resource) do
-      raise ArgumentError,
-            "use Phoenix.View is being called twice in the module #{module}. " <>
-              "Make sure to call it only once per module"
-    else
-      view_resource = String.to_atom(Phoenix.Template.resource_name(module, "View"))
-      Module.put_attribute(module, :view_resource, view_resource)
-    end
+    opts =
+      if Macro.quoted_literal?(opts) do
+        Macro.prewalk(opts, &expand_alias(&1, __CALLER__))
+      else
+        opts
+      end
 
     quote do
       import Phoenix.View
       use Phoenix.Template, Phoenix.View.__template_options__(__MODULE__, unquote(opts))
 
       @before_compile Phoenix.View
-      @view_resource String.to_atom(Phoenix.Template.resource_name(__MODULE__, "View"))
 
       @doc """
       Renders the given template locally.
@@ -188,6 +183,11 @@ defmodule Phoenix.View do
       def __resource__, do: @view_resource
     end
   end
+
+  defp expand_alias({:__aliases__, _, _} = alias, env),
+    do: Macro.expand(alias, %{env | function: {:init, 1}})
+
+  defp expand_alias(other, _env), do: other
 
   @doc false
   defmacro __before_compile__(_env) do
@@ -490,6 +490,15 @@ defmodule Phoenix.View do
 
   @doc false
   def __template_options__(module, opts) do
+    if Module.get_attribute(module, :view_resource) do
+      raise ArgumentError,
+            "use Phoenix.View is being called twice in the module #{module}. " <>
+              "Make sure to call it only once per module"
+    else
+      view_resource = String.to_atom(Phoenix.Template.resource_name(module, "View"))
+      Module.put_attribute(module, :view_resource, view_resource)
+    end
+
     root = opts[:root] || raise(ArgumentError, "expected :root to be given as an option")
     path = opts[:path]
 

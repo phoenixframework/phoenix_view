@@ -133,15 +133,16 @@ defmodule Phoenix.Template do
   end
 
   @doc false
-  defmacro __using__(options) do
-    quote bind_quoted: [options: options], unquote: true do
-      root = Keyword.fetch!(options, :root)
-      @phoenix_root Path.relative_to_cwd(root)
-      @phoenix_pattern Keyword.get(options, :pattern, unquote(@default_pattern))
-      @phoenix_template_engines Enum.into(
-                                  Keyword.get(options, :template_engines, %{}),
-                                  Template.engines()
-                                )
+  defmacro __using__(opts) do
+    opts =
+      if Macro.quoted_literal?(opts) do
+        Macro.prewalk(opts, &expand_alias(&1, __CALLER__))
+      else
+        opts
+      end
+
+    quote bind_quoted: [opts: opts], unquote: true do
+      Phoenix.Template.__options__(__MODULE__, opts)
       @before_compile unquote(__MODULE__)
 
       @doc """
@@ -156,6 +157,32 @@ defmodule Phoenix.Template do
 
       defoverridable template_not_found: 2
     end
+  end
+
+  defp expand_alias({:__aliases__, _, _} = alias, env),
+    do: Macro.expand(alias, %{env | function: {:init, 1}})
+
+  defp expand_alias(other, _env), do: other
+
+  @doc false
+  def __options__(module, options) do
+    root = Keyword.fetch!(options, :root)
+    Module.put_attribute(module, :phoenix_root, Path.relative_to_cwd(root))
+
+    Module.put_attribute(
+      module,
+      :phoenix_pattern,
+      Keyword.get(options, :pattern, unquote(@default_pattern))
+    )
+
+    Module.put_attribute(
+      module,
+      :phoenix_template_engines,
+      Enum.into(
+        Keyword.get(options, :template_engines, %{}),
+        Template.engines()
+      )
+    )
   end
 
   @doc false
