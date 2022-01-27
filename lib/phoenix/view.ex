@@ -386,27 +386,29 @@ defmodule Phoenix.View do
   @doc """
   Renders a collection.
 
-  A collection is any enumerable of structs. This function
-  returns the rendered collection in a list:
+  It receives a collection as an enumerable of structs and returns
+  the rendered collection in a list. This is typically used to render
+  a collection as structured data. For example, to render a list of
+  users to json:
 
-      render_many users, UserView, "show.html"
+      render_many(users, UserView, "show.json")
 
-  is roughly equivalent to:
+  which is roughly equivalent to:
 
       Enum.map(users, fn user ->
-        render(UserView, "show.html", user: user)
+        render(UserView, "show.json", user: user)
       end)
 
   The underlying user is passed to the view and template as `:user`,
   which is inferred from the view name. The name of the key
   in assigns can be customized with the `:as` option:
 
-      render_many users, UserView, "show.html", as: :data
+      render_many(users, UserView, "show.json", as: :data)
 
   is roughly equivalent to:
 
       Enum.map(users, fn user ->
-        render(UserView, "show.html", data: user)
+        render(UserView, "show.json", data: user)
       end)
 
   """
@@ -424,24 +426,24 @@ defmodule Phoenix.View do
 
   The following:
 
-      render_one user, UserView, "show.html"
+      render_one(user, UserView, "show.json")
 
   is roughly equivalent to:
 
       if user != nil do
-        render(UserView, "show.html", user: user)
+        render(UserView, "show.json", user: user)
       end
 
   The underlying user is passed to the view and template as
   `:user`, which is inflected from the view name. The name
   of the key in assigns can be customized with the `:as` option:
 
-      render_one user, UserView, "show.html", as: :data
+      render_one(user, UserView, "show.json", as: :data)
 
   is roughly equivalent to:
 
       if user != nil do
-        render(UserView, "show.html", data: user)
+        render(UserView, "show.json", data: user)
       end
 
   """
