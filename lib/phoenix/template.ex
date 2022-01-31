@@ -193,15 +193,23 @@ defmodule Phoenix.Template do
     pattern = Module.get_attribute(env.module, :phoenix_pattern)
     engines = Module.get_attribute(env.module, :phoenix_template_engines)
 
-    pairs =
+    triplets =
       for path <- find_all(root, pattern, engines) do
         compile(path, root, engines)
       end
 
-    names = Enum.map(pairs, &elem(&1, 0))
-    codes = Enum.map(pairs, &elem(&1, 1))
+    names = Enum.map(triplets, &elem(&1, 0))
+    codes = Enum.map(triplets, &elem(&1, 2))
+
+    compile_time_deps =
+      for engine <- triplets |> Enum.map(&elem(&1, 1)) |> Enum.uniq() do
+        quote do
+          unquote(engine).__info__(:module)
+        end
+      end
 
     quote do
+      unquote(compile_time_deps)
       unquote(codes)
 
       # Catch-all clause for template rendering.
@@ -411,7 +419,7 @@ defmodule Phoenix.Template do
     engine = Map.fetch!(engines, ext)
     quoted = engine.compile(path, name)
 
-    {name,
+    {name, engine,
      quote do
        @file unquote(path)
        @external_resource unquote(path)
