@@ -378,6 +378,7 @@ defmodule Phoenix.Template do
   end
 
   @doc false
+  @spec raise_template_not_found(module(), String.t(), map) :: no_return
   def raise_template_not_found(view_module, template, assigns) do
     {root, pattern, names} = view_module.__templates__()
 
