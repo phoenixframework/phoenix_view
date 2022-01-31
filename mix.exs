@@ -1,7 +1,7 @@
 defmodule PhoenixView.MixProject do
   use Mix.Project
 
-  @version "1.1.0"
+  @version "1.1.1"
   @source_url "https://github.com/phoenixframework/phoenix_view"
 
   def project do
