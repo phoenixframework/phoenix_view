@@ -151,7 +151,7 @@ defmodule Phoenix.Template do
       to render a particular template.
       """
       # Say it can return term in case the function is overridden.
-      @spec template_not_found(Phoenix.Template.name(), map) :: term | no_return
+      @spec template_not_found(Phoenix.Template.name(), map) :: no_return
       def template_not_found(template, assigns) do
         Template.raise_template_not_found(__MODULE__, template, assigns)
       end
