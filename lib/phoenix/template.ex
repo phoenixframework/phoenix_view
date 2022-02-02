@@ -150,9 +150,8 @@ defmodule Phoenix.Template do
       By default it raises but can be customized
       to render a particular template.
       """
-      # Do not add a spec as they are not overridable and
-      # the user may want to return an actual value
-      # @spec template_not_found(Phoenix.Template.name(), map) :: no_return
+      # Say it can return term in case the function is overridden.
+      @spec template_not_found(Phoenix.Template.name(), map) :: term | no_return
       def template_not_found(template, assigns) do
         Template.raise_template_not_found(__MODULE__, template, assigns)
       end
@@ -378,7 +377,6 @@ defmodule Phoenix.Template do
   end
 
   @doc false
-  @spec raise_template_not_found(module(), String.t(), map) :: no_return
   def raise_template_not_found(view_module, template, assigns) do
     {root, pattern, names} = view_module.__templates__()
 
