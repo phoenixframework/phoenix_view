@@ -268,7 +268,7 @@ defmodule Phoenix.Template do
 
   defp json_library() do
     Application.get_env(:phoenix_view, :json_library) ||
-      Application.get_env(:phoenix, :json_library, Poison)
+      Application.get_env(:phoenix, :json_library, Jason)
   end
 
   @doc """
