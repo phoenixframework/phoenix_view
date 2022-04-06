@@ -343,7 +343,7 @@ defmodule Phoenix.View do
   accessing the view under `@socket`:
 
       <div class="sidebar">
-        <%= if function_exported?(@socket.view, :sidebar_additions, 1) do
+        <%= if function_exported?(@socket.view, :sidebar_additions, 1) do %>
           <%= @socket.view.sidebar_additions(assigns) %>
         <% end %>
       </div>
