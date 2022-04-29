@@ -334,7 +334,7 @@ defmodule Phoenix.View do
   in the sidebar. Inside your sidebar, you could do:
 
       <div class="sidebar">
-        <%= if function_exported?(view_module(@conn), :sidebar_additions, 1) do
+        <%= if function_exported?(view_module(@conn), :sidebar_additions, 1) do %>
           <%= view_module(@conn).sidebar_additions(assigns) %>
         <% end %>
       </div>
