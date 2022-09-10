@@ -235,6 +235,7 @@ defmodule Phoenix.View do
       plug :put_layout, "blog.html"
 
   """
+  @deprecated "Use Phoenix.Component instead"
   def render_layout(module, template, assigns, do: block) do
     assigns =
       assigns
