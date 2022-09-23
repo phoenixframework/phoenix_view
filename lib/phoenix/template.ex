@@ -52,6 +52,13 @@ defmodule Phoenix.Template do
 
   @default_pattern "*"
 
+  @doc false
+  defmacro __using__(_opts) do
+    quote do
+      Phoenix.Template.__idempotent_setup__(__MODULE__, %{})
+    end
+  end
+
   ## Configuration API
 
   @engines [
@@ -92,7 +99,7 @@ defmodule Phoenix.Template do
 
   defp json_library() do
     Application.get_env(:phoenix_template, :json_library) ||
-    deprecated_config(:phoenix_view, :json_library) ||
+      deprecated_config(:phoenix_view, :json_library) ||
       Application.get_env(:phoenix, :json_library, Jason)
   end
 
@@ -124,7 +131,7 @@ defmodule Phoenix.Template do
 
   defp raw_config(name, fallback) do
     Application.get_env(:phoenix_template, name) ||
-    deprecated_config(:phoenix_view, name) || Application.get_env(:phoenix, name, fallback)
+      deprecated_config(:phoenix_view, name) || Application.get_env(:phoenix, name, fallback)
   end
 
   defp deprecated_config(app, name) do
@@ -164,27 +171,90 @@ defmodule Phoenix.Template do
     |> :erlang.md5()
   end
 
-  defp compile(path, root, engines) do
-    name = template_path_to_name(path, root)
-    defp = String.to_atom(name)
-    ext = Path.extname(path) |> String.trim_leading(".") |> String.to_atom()
-    engine = Map.fetch!(engines, ext)
-    quoted = engine.compile(path, name)
+  defmacro compile_all(converter, root, pattern \\ @default_pattern, engines \\ nil) do
+    quote bind_quoted: binding() do
+      for {path, name, body} <-
+            Phoenix.Template.__compile_all__(__MODULE__, converter, root, pattern, engines) do
+        @external_resource path
+        @file path
+        def unquote(String.to_atom(name))(var!(assigns)) do
+          _ = var!(assigns)
+          unquote(body)
+        end
 
-    {name, engine,
-     quote do
-       @file unquote(path)
-       @external_resource unquote(path)
+        {name, path}
+      end
+    end
+  end
 
-       defp unquote(defp)(var!(assigns)) do
-         _ = var!(assigns)
-         unquote(quoted)
-       end
+  @doc false
+  def __compile_all__(module, converter, root, pattern, given_engines) do
+    engines = given_engines || engines()
+    paths = find_all(root, pattern, engines)
 
-       defp render_template(unquote(name), assigns) do
-         unquote(defp)(assigns)
-       end
-     end}
+    {triplets, {paths, engines}} =
+      Enum.map_reduce(paths, {[], %{}}, fn path, {acc_paths, acc_engines} ->
+        ext = Path.extname(path) |> String.trim_leading(".") |> String.to_atom()
+        engine = Map.fetch!(engines, ext)
+        name = converter.(path)
+        body = engine.compile(path, name)
+        map = {path, name, body}
+        reduce = {[path | acc_paths], Map.put(acc_engines, engine, true)}
+        {map, reduce}
+      end)
+
+    # Store the engines so we define compile-time deps
+    __idempotent_setup__(module, engines)
+
+    # Store the hashes so we define __mix_recompile__?
+    hash = paths |> Enum.sort() |> :erlang.md5()
+
+    args =
+      if given_engines, do: [root, pattern, Macro.escape(given_engines)], else: [root, pattern]
+
+    Module.put_attribute(module, :phoenix_templates_hashes, {hash, args})
+    triplets
+  end
+
+  @doc false
+  def __idempotent_setup__(module, engines) do
+    # Store the used engines so they become requires on before_compile
+    if used_engines = Module.get_attribute(module, :phoenix_templates_engines) do
+      Module.put_attribute(module, :phoenix_templates_engines, Map.merge(used_engines, engines))
+    else
+      Module.register_attribute(module, :phoenix_templates_hashes, accumulate: true)
+      Module.put_attribute(module, :phoenix_templates_engines, engines)
+      Module.put_attribute(module, :before_compile, Phoenix.Template)
+    end
+  end
+
+  @doc false
+  defmacro __before_compile__(env) do
+    hashes = Module.get_attribute(env.module, :phoenix_templates_hashes)
+    engines = Module.get_attribute(env.module, :phoenix_templates_engines)
+
+    body =
+      Enum.reduce(hashes, false, fn {hash, args}, acc ->
+        quote do
+          unquote(acc) or unquote(hash) != Phoenix.Template.hash(unquote_splicing(args))
+        end
+      end)
+
+    compile_time_deps =
+      for {engine, _} <- engines do
+        quote do
+          unquote(engine).__info__(:module)
+        end
+      end
+
+    quote do
+      unquote(compile_time_deps)
+
+      @doc false
+      def __mix_recompile__? do
+        unquote(body)
+      end
+    end
   end
 
   ## Deprecated API
@@ -217,57 +287,6 @@ defmodule Phoenix.Template do
     case string do
       <<prefix::binary-size(prefix_size), ^suffix::binary>> -> prefix
       _ -> string
-    end
-  end
-
-  @doc false
-  defmacro __before_compile__(env) do
-    root = Module.get_attribute(env.module, :phoenix_root)
-    pattern = Module.get_attribute(env.module, :phoenix_pattern)
-    engines = Module.get_attribute(env.module, :phoenix_template_engines)
-
-    triplets =
-      for path <- find_all(root, pattern, engines) do
-        compile(path, root, engines)
-      end
-
-    names = Enum.map(triplets, &elem(&1, 0))
-    codes = Enum.map(triplets, &elem(&1, 2))
-
-    compile_time_deps =
-      for engine <- triplets |> Enum.map(&elem(&1, 1)) |> Enum.uniq() do
-        quote do
-          unquote(engine).__info__(:module)
-        end
-      end
-
-    quote do
-      unquote(compile_time_deps)
-      unquote(codes)
-
-      # Catch-all clause for template rendering.
-      defp render_template(template, %{__phx_render_existing__: {__MODULE__, template}}) do
-        nil
-      end
-
-      defp render_template(template, %{__phx_template_not_found__: __MODULE__} = assigns) do
-        Phoenix.View.__not_found__!(__MODULE__, template, assigns)
-      end
-
-      defp render_template(template, assigns) do
-        template_not_found(template, Map.put(assigns, :__phx_template_not_found__, __MODULE__))
-      end
-
-      @doc false
-      def __templates__ do
-        {@phoenix_root, @phoenix_pattern, unquote(names)}
-      end
-
-      @doc false
-      def __mix_recompile__? do
-        unquote(hash(root, pattern, engines)) !=
-          Phoenix.Template.hash(@phoenix_root, @phoenix_pattern, @phoenix_template_engines)
-      end
     end
   end
 end

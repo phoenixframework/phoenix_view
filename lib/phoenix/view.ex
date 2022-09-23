@@ -1,13 +1,15 @@
 defmodule Phoenix.View do
   @moduledoc """
-  Defines the view layer of a Phoenix application.
+  A module for generating `render/2` functions from templates in disk.
 
-  The view layer contains conveniences for rendering templates,
-  including support for layouts and encoders per format.
+  With `Phoenix.LiveView`, this module has fallen out of fashion in favor
+  of `Phoenix.Component`. See the "Replaced by `Phoenix.Component`" section
+  below.
 
   ## Examples
 
-  Phoenix defines the view template at `lib/your_app_web.ex`:
+  In Phoenix v1.6 and earlier, new Phoenix apps defined a blueprint for views
+  at `lib/your_app_web.ex`. It generally looked like this:
 
       defmodule YourAppWeb do
         # ...
@@ -25,22 +27,19 @@ defmodule Phoenix.View do
 
             import YourAppWeb.ErrorHelpers
             import YourAppWeb.Gettext
-
-            # Alias the Helpers module as Routes
-            alias  YourAppWeb.Router.Helpers, as: Routes
           end
         end
 
         # ...
       end
 
-  You can use the definition above to define any view in your application:
+  Then you could use the definition above to define any view in your application:
 
       defmodule YourApp.UserView do
         use YourAppWeb, :view
       end
 
-  Because we have defined the template root to be "lib/your_app_web/templates",
+  Because we defined the template root to be "lib/your_app_web/templates",
   `Phoenix.View` will automatically load all templates at "your_app_web/templates/user"
   and include them in the `YourApp.UserView`. For example, imagine we have the
   template:
@@ -55,27 +54,75 @@ defmodule Phoenix.View do
       Phoenix.View.render_to_string(YourApp.UserView, "index.html", name: "John Doe")
       #=> "Hello John Doe"
 
-  ## Differences to `Phoenix.LiveView`
+  ## Replaced by `Phoenix.Comopnent`
 
-  Traditional web applications, that rely on a request/response life cycle,
-  have been typically organized under the Model-View-Controller pattern.
-  In this case, the Controller is responsible for organizing interacting
-  with the model and passing all relevant information to the View for
-  rendering. `Phoenix.Controller` and `Phoenix.View` play those roles
-  respectively.
+  With `Phoenix.LiveView`, `Phoenix.View` has been replaced by
+  `Phoenix.Component`. `Phoenix.Component` is capable of embedding templates
+  on disk as functions components, using the `embed_templates` function.
+  For example, in Phoenix v1.7+, the `YourApp.UserView` above would be written as:
 
-  `Phoenix.LiveView` introduces a declarative model where the controller
-  and the view are kept side by side. This empowers `Phoenix.LiveView`
-  to provide realtime and interactive features under a stateful connection.
+      defmodule YourApp.UserHTML do
+        use YourAppWeb, :html
 
-  In other words, you may consider that `Phoenix.LiveView` abridges both
-  `Phoenix.Controller` and `Phoenix.View` responsibilities. Developers
-  do not generally use `Phoenix.View` from their live views, but LiveView
-  does use `Phoenix.View` and its features under the scenes.
+        embed_templates "users"
+      end
+
+  Where `YourAppWeb` is mostly `use Phoenix.Component` and additional helpers.
+  The benefit of `Phoenix.Component` is that it unifies the rendering of
+  traditional request/response life cycles with the realtime LiveView model.
+
+  ### Migrating to Phoenix.Component
+
+  If you want to migrate your current components to views, it is relatively
+  straight-forward and it can be done in few steps. The good news is also
+  that you can migrate each view one at a time.
+
+  The first step is to define `def html do` in your `lib/my_app_web.ex` module.
+  This function is similar to `def view`, but it replaces `use Phoenix.View`
+  by `import Phoenix.View` and also adds `use Phoenix.Component`.
+
+  Then, for each view, you must follow the these steps (we will assume the
+  current view is called `MyApp.MyView`):
+
+    1. Remove any calls to `render_layout` and `render_existing` from
+       the templates in this view according to their deprecation notice
+
+    2. Replace `use MyApp, :view` by `use MyApp, :html` and invoke
+       `embed_template "my_view"`
+
+    3. Your templates may know break if they are calling `render/2`
+       You can address this by replacing `render/2` by a function
+       component. For instance, `render("_form.html", changeset: @changeset, user: @user)`
+       can now be called as `<.form changeset={@changeset} user={@user} />`.
+       If passing all assigns, `render("_form.html", assigns)` becomes
+       `<%= _form(assigns) %>`
+
+  Now you are using components! Once you convert all views, you should
+  be able to remove `Phoenix.View` as a dependency from your project.
+  Remove both `def view` and `import Phoenix.View` from `def html`
+  in your `lib/my_app_web.ex` module. Now, compilation may fail if you
+  are using certain functions:
+
+    * Replace `render/3` by a function component. For instance,
+      `render(OtherView, "_form.html", changeset: @changeset, user: @user)`
+      can now be called as `<OtherView.form changeset={@changeset} user={@user} />`.
+      If passing all assigns, `render(OtherView, "_form.html", assigns)`
+      becomes `<%= OtherView._form(assigns) %>`.
+
+    * If you are using `Phoenix.View` for APIs, you also want to define
+      a `def json` in your `lib/my_app_web.ex` as follows:
+
+          ```elixir
+          def json do
+            quote do
+              use Phoenix.JSON
+            end
+          end
+          ```
 
   ## Rendering and formats
 
-  The main responsibility of a view is to render a template.
+  `Phoenix.View` renders template.
 
   A template has a name, which also contains a format. For example,
   in the previous section we have rendered the "index.html" template:
@@ -157,6 +204,8 @@ defmodule Phoenix.View do
       end
 
     quote do
+      use Phoenix.Template
+
       import Phoenix.View
       Phoenix.View.__setup__(__MODULE__, unquote(opts))
 
@@ -199,19 +248,6 @@ defmodule Phoenix.View do
 
   defp expand_alias(other, _env), do: other
 
-  @doc false
-  defmacro __before_compile__(_env) do
-    # We are using @anno because we don't want warnings coming from
-    # render/2 to be reported in case the user has defined a catch-all
-    # render/2 clause.
-    quote generated: true do
-      # Catch-all clause for rendering.
-      def render(template, assigns) do
-        render_template(template, assigns)
-      end
-    end
-  end
-
   @doc """
   Renders the given layout passing the given `do/end` block
   as `@inner_content`.
@@ -245,6 +281,7 @@ defmodule Phoenix.View do
       plug :put_layout, "blog.html"
 
   """
+  @doc deprecated: "Use Phoenix.Component with slots instead"
   def render_layout(module, template, assigns, do: block) do
     assigns =
       assigns
@@ -387,6 +424,7 @@ defmodule Phoenix.View do
   render for. For example, for the `UserView`, create the `scripts.html.eex`
   file at `your_app_web/templates/user/`.
   '''
+  @doc deprecated: "Use function_exported? instead"
   def render_existing(module, template, assigns \\ []) do
     assigns = assigns |> Map.new() |> Map.put(:__phx_render_existing__, {module, template})
     render(module, template, assigns)
@@ -511,7 +549,7 @@ defmodule Phoenix.View do
       "admin/users/show.html"
 
   """
-  @spec template_path_to_name(Path.t, Path.t) :: Path.t
+  @spec template_path_to_name(Path.t(), Path.t()) :: Path.t()
   def template_path_to_name(path, root) do
     path
     |> Path.rootname()
@@ -619,8 +657,6 @@ defmodule Phoenix.View do
     end
 
     Module.put_attribute(module, :before_compile, Phoenix.View)
-    Module.put_attribute(module, :before_compile, Phoenix.Template)
-
     root = opts[:root] || raise(ArgumentError, "expected :root to be given as an option")
     path = opts[:path]
 
@@ -639,7 +675,52 @@ defmodule Phoenix.View do
     Module.put_attribute(module, :phoenix_pattern, Keyword.get(opts, :pattern, "*"))
 
     engines = Enum.into(Keyword.get(opts, :template_engines, []), Phoenix.Template.engines())
-    Module.put_attribute(module, :phoenix_template_engines, engines)
+    Module.put_attribute(module, :phoenix_engines, engines)
+  end
+
+  @doc false
+  defmacro __before_compile__(_env) do
+    quote generated: true, unquote: false do
+      require Phoenix.Template
+
+      names =
+        for {name, _path} <-
+              Phoenix.Template.compile_all(
+                &Phoenix.View.template_path_to_name(&1, @phoenix_root),
+                @phoenix_root,
+                @phoenix_pattern,
+                @phoenix_engines
+              ) do
+          defp render_template(unquote(name), assigns) do
+            unquote(String.to_atom(name))(assigns)
+          end
+
+          name
+        end
+
+      # Catch-all clause for template rendering.
+      defp render_template(template, %{__phx_render_existing__: {__MODULE__, template}}) do
+        nil
+      end
+
+      defp render_template(template, %{__phx_template_not_found__: __MODULE__} = assigns) do
+        Phoenix.View.__not_found__!(__MODULE__, template, assigns)
+      end
+
+      defp render_template(template, assigns) do
+        template_not_found(template, Map.put(assigns, :__phx_template_not_found__, __MODULE__))
+      end
+
+      # Catch-all clause for rendering.
+      def render(template, assigns) do
+        render_template(template, assigns)
+      end
+
+      @doc false
+      def __templates__ do
+        {@phoenix_root, @phoenix_pattern, unquote(names)}
+      end
+    end
   end
 
   defp resource_name(alias, suffix) do
