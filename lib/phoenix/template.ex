@@ -8,19 +8,6 @@ defmodule Phoenix.Template do
 
   This module provides conveniences for reading all files from a
   particular directory and embedding them into a single module.
-  Imagine you have a directory with templates:
-
-      # templates/foo.html.eex
-      Hello <%= @name %>
-
-      # templates.ex
-      defmodule Templates do
-        use Phoenix.Template, root: "templates"
-
-        def render(template, assigns) do
-          render_template(template, assigns)
-        end
-      end
 
   `Phoenix.Template` will define a private function named `render_template/2`
   with one clause per file system template. You are responsible to expose
@@ -29,30 +16,6 @@ defmodule Phoenix.Template do
   In practice, developers rarely use `Phoenix.Template` directly.
   Instead they use `Phoenix.View` which wraps the template functionality
   and adds some extra conveniences.
-
-  ## Options
-
-    * `:root` - the root template path to find templates
-    * `:pattern` - the wildcard pattern to apply to the root
-      when finding templates. Default `"*"`
-    * `:template_engines` - a map of template engines extensions
-      to template engine handlers
-
-  ## Terminology
-
-  Here is a quick introduction into Phoenix templates terms:
-
-    * template name - is the name of the template as
-      given by the user, without the template engine extension,
-      for example: "users.html"
-
-    * template path - is the complete path of the template
-      in the filesystem, for example, "path/to/users.html.eex"
-
-    * template root - the directory where templates are defined
-
-    * template engine - a module that receives a template path
-      and transforms its source code into Elixir quoted expressions
 
   ## Custom Template Engines
 
@@ -64,16 +27,9 @@ defmodule Phoenix.Template do
   Once a template engine is defined, you can tell Phoenix
   about it via the template engines option:
 
-      config :phoenix_view, :template_engines,
+      config :phoenix, :template_engines,
         eex: Phoenix.Template.EExEngine,
         exs: Phoenix.Template.ExsEngine
-
-  If you want to support a given engine only on a certain template,
-  you can pass it as an option on `use Phoenix.Template`:
-
-      use Phoenix.Template, template_engines: %{
-        foo: Phoenix.Template.FooEngine
-      }
 
   ## Format encoders
 
@@ -86,16 +42,17 @@ defmodule Phoenix.Template do
 
   New encoders can be added via the format encoder option:
 
-      config :phoenix_view, :format_encoders,
+      config :phoenix_template, :format_encoders,
         html: Phoenix.HTML.Engine
 
   """
 
-  @type name :: binary
   @type path :: binary
   @type root :: binary
 
-  alias Phoenix.Template
+  @default_pattern "*"
+
+  ## Configuration API
 
   @engines [
     eex: Phoenix.Template.EExEngine,
@@ -104,86 +61,163 @@ defmodule Phoenix.Template do
     heex: Phoenix.LiveView.HTMLEngine
   ]
 
-  @default_pattern "*"
-  @private_assigns [:__phx_template_not_found__]
+  @doc """
+  Returns the format encoder for the given template.
+  """
+  @spec format_encoder(path) :: module | nil
+  def format_encoder(path) when is_binary(path) do
+    Map.get(compiled_format_encoders(), Path.extname(path))
+  end
 
-  defmodule UndefinedError do
-    @moduledoc """
-    Exception raised when a template cannot be found.
-    """
-    defexception [:available, :template, :module, :root, :assigns, :pattern]
+  defp compiled_format_encoders do
+    case Application.fetch_env(:phoenix_view, :compiled_format_encoders) do
+      {:ok, encoders} ->
+        encoders
 
-    def message(exception) do
-      "Could not render #{inspect(exception.template)} for #{inspect(exception.module)}, " <>
-        "please define a matching clause for render/2 or define a template at " <>
-        "#{inspect(Path.join(Path.relative_to_cwd(exception.root), exception.pattern))}. " <>
-        available_templates(exception.available) <>
-        "\nAssigns:\n\n" <>
-        inspect(exception.assigns) <>
-        "\n\nAssigned keys: #{inspect(Map.keys(exception.assigns))}\n"
-    end
+      :error ->
+        encoders =
+          default_encoders()
+          |> Keyword.merge(raw_config(:format_encoders, []))
+          |> Enum.filter(fn {_, v} -> v end)
+          |> Enum.into(%{}, fn {k, v} -> {".#{k}", v} end)
 
-    defp available_templates([]), do: "No templates were compiled for this module."
-
-    defp available_templates(available) do
-      "The following templates were compiled:\n\n" <>
-        Enum.map_join(available, "\n", &"* #{&1}") <>
-        "\n"
+        Application.put_env(:phoenix_view, :compiled_format_encoders, encoders)
+        encoders
     end
   end
 
-  @doc false
-  defmacro __using__(opts) do
-    opts =
-      if Macro.quoted_literal?(opts) do
-        Macro.prewalk(opts, &expand_alias(&1, __CALLER__))
-      else
-        opts
-      end
+  defp default_encoders do
+    [html: Phoenix.HTML.Engine, json: json_library(), js: Phoenix.HTML.Engine]
+  end
 
-    quote bind_quoted: [opts: opts], unquote: true do
-      Phoenix.Template.__options__(__MODULE__, opts)
-      @before_compile unquote(__MODULE__)
+  defp json_library() do
+    Application.get_env(:phoenix_template, :json_library) ||
+    deprecated_config(:phoenix_view, :json_library) ||
+      Application.get_env(:phoenix, :json_library, Jason)
+  end
 
-      @doc """
-      Callback invoked when no template is found.
-      By default it raises but can be customized
-      to render a particular template.
-      """
-      # Say it can return term in case the function is overridden.
-      @spec template_not_found(Phoenix.Template.name(), map) :: no_return
-      def template_not_found(template, assigns) do
-        Template.raise_template_not_found(__MODULE__, template, assigns)
-      end
+  @doc """
+  Returns a keyword list with all template engines
+  extensions followed by their modules.
+  """
+  @spec engines() :: %{atom => module}
+  def engines do
+    compiled_engines()
+  end
 
-      defoverridable template_not_found: 2
+  defp compiled_engines do
+    case Application.fetch_env(:phoenix_view, :compiled_template_engines) do
+      {:ok, engines} ->
+        engines
+
+      :error ->
+        engines =
+          @engines
+          |> Keyword.merge(raw_config(:template_engines, []))
+          |> Enum.filter(fn {_, v} -> v end)
+          |> Enum.into(%{})
+
+        Application.put_env(:phoenix_view, :compiled_template_engines, engines)
+        engines
     end
   end
 
-  defp expand_alias({:__aliases__, _, _} = alias, env),
-    do: Macro.expand(alias, %{env | function: {:init, 1}})
+  defp raw_config(name, fallback) do
+    Application.get_env(:phoenix_template, name) ||
+    deprecated_config(:phoenix_view, name) || Application.get_env(:phoenix, name, fallback)
+  end
 
-  defp expand_alias(other, _env), do: other
+  defp deprecated_config(app, name) do
+    if value = Application.get_env(app, name) do
+      # TODO: Uncomment once :phoenix_template is extracted
+      # IO.warn(
+      #   "config :#{app}, :#{name} is deprecated, please use config :phoenix_template, :#{name} instead"
+      # )
 
-  @doc false
-  def __options__(module, options) do
-    root = Keyword.fetch!(options, :root)
-    Module.put_attribute(module, :phoenix_root, Path.relative_to_cwd(root))
+      value
+    end
+  end
 
-    Module.put_attribute(
-      module,
-      :phoenix_pattern,
-      Keyword.get(options, :pattern, unquote(@default_pattern))
-    )
+  ## Lookup API
 
-    Module.put_attribute(
-      module,
-      :phoenix_template_engines,
-      Enum.into(
-        Keyword.get(options, :template_engines, %{}),
-        Template.engines()
-      )
-    )
+  @doc """
+  Returns all template paths in a given template root.
+  """
+  @spec find_all(root, pattern :: String.t(), %{atom => module}) :: [path]
+  def find_all(root, pattern \\ @default_pattern, engines \\ engines()) do
+    extensions = engines |> Map.keys() |> Enum.join(",")
+
+    root
+    |> Path.join(pattern <> ".{#{extensions}}")
+    |> Path.wildcard()
+  end
+
+  @doc """
+  Returns the hash of all template paths in the given root.
+
+  Used by Phoenix to check if a given root path requires recompilation.
+  """
+  @spec hash(root, pattern :: String.t(), %{atom => module}) :: binary
+  def hash(root, pattern \\ @default_pattern, engines \\ engines()) do
+    find_all(root, pattern, engines)
+    |> Enum.sort()
+    |> :erlang.md5()
+  end
+
+  defp compile(path, root, engines) do
+    name = template_path_to_name(path, root)
+    defp = String.to_atom(name)
+    ext = Path.extname(path) |> String.trim_leading(".") |> String.to_atom()
+    engine = Map.fetch!(engines, ext)
+    quoted = engine.compile(path, name)
+
+    {name, engine,
+     quote do
+       @file unquote(path)
+       @external_resource unquote(path)
+
+       defp unquote(defp)(var!(assigns)) do
+         _ = var!(assigns)
+         unquote(quoted)
+       end
+
+       defp render_template(unquote(name), assigns) do
+         unquote(defp)(assigns)
+       end
+     end}
+  end
+
+  ## Deprecated API
+
+  @deprecated "Use Phoenix.View.template_path_to_name/3"
+  def template_path_to_name(path, root) do
+    path
+    |> Path.rootname()
+    |> Path.relative_to(root)
+  end
+
+  @deprecated "Use Phoenix.View.module_to_template_root/3"
+  def module_to_template_root(module, base, suffix) do
+    module
+    |> unsuffix(suffix)
+    |> Module.split()
+    |> Enum.drop(length(Module.split(base)))
+    |> Enum.map(&Macro.underscore/1)
+    |> join_paths()
+  end
+
+  defp join_paths([]), do: ""
+  defp join_paths(paths), do: Path.join(paths)
+
+  defp unsuffix(value, suffix) do
+    string = to_string(value)
+    suffix_size = byte_size(suffix)
+    prefix_size = byte_size(string) - suffix_size
+
+    case string do
+      <<prefix::binary-size(prefix_size), ^suffix::binary>> -> prefix
+      _ -> string
+    end
   end
 
   @doc false
@@ -217,7 +251,7 @@ defmodule Phoenix.Template do
       end
 
       defp render_template(template, %{__phx_template_not_found__: __MODULE__} = assigns) do
-        Template.raise_template_not_found(__MODULE__, template, assigns)
+        Phoenix.View.__not_found__!(__MODULE__, template, assigns)
       end
 
       defp render_template(template, assigns) do
@@ -232,205 +266,8 @@ defmodule Phoenix.Template do
       @doc false
       def __mix_recompile__? do
         unquote(hash(root, pattern, engines)) !=
-          Template.hash(@phoenix_root, @phoenix_pattern, @phoenix_template_engines)
+          Phoenix.Template.hash(@phoenix_root, @phoenix_pattern, @phoenix_template_engines)
       end
     end
-  end
-
-  @doc """
-  Returns the format encoder for the given template name.
-  """
-  @spec format_encoder(name) :: module | nil
-  def format_encoder(template_name) when is_binary(template_name) do
-    Map.get(compiled_format_encoders(), Path.extname(template_name))
-  end
-
-  defp compiled_format_encoders do
-    case Application.fetch_env(:phoenix_view, :compiled_format_encoders) do
-      {:ok, encoders} ->
-        encoders
-
-      :error ->
-        encoders =
-          default_encoders()
-          |> Keyword.merge(raw_config(:format_encoders, []))
-          |> Enum.filter(fn {_, v} -> v end)
-          |> Enum.into(%{}, fn {k, v} -> {".#{k}", v} end)
-
-        Application.put_env(:phoenix_view, :compiled_format_encoders, encoders)
-        encoders
-    end
-  end
-
-  defp default_encoders do
-    [html: Phoenix.HTML.Engine, json: json_library(), js: Phoenix.HTML.Engine]
-  end
-
-  defp json_library() do
-    Application.get_env(:phoenix_view, :json_library) ||
-      Application.get_env(:phoenix, :json_library, Jason)
-  end
-
-  @doc """
-  Returns a keyword list with all template engines
-  extensions followed by their modules.
-  """
-  @spec engines() :: %{atom => module}
-  def engines do
-    compiled_engines()
-  end
-
-  defp compiled_engines do
-    case Application.fetch_env(:phoenix_view, :compiled_template_engines) do
-      {:ok, engines} ->
-        engines
-
-      :error ->
-        engines =
-          @engines
-          |> Keyword.merge(raw_config(:template_engines, []))
-          |> Enum.filter(fn {_, v} -> v end)
-          |> Enum.into(%{})
-
-        Application.put_env(:phoenix_view, :compiled_template_engines, engines)
-        engines
-    end
-  end
-
-  defp raw_config(name, fallback) do
-    Application.get_env(:phoenix_view, name) || Application.get_env(:phoenix, name, fallback)
-  end
-
-  @doc """
-  Converts the template path into the template name.
-
-  ## Examples
-
-      iex> Phoenix.Template.template_path_to_name(
-      ...>   "lib/templates/admin/users/show.html.eex",
-      ...>   "lib/templates")
-      "admin/users/show.html"
-
-  """
-  @spec template_path_to_name(path, root) :: name
-  def template_path_to_name(path, root) do
-    path
-    |> Path.rootname()
-    |> Path.relative_to(root)
-  end
-
-  @doc """
-  Converts a module, without the suffix, to a template root.
-
-  ## Examples
-
-      iex> Phoenix.Template.module_to_template_root(MyApp.UserView, MyApp, "View")
-      "user"
-
-      iex> Phoenix.Template.module_to_template_root(MyApp.Admin.User, MyApp, "View")
-      "admin/user"
-
-      iex> Phoenix.Template.module_to_template_root(MyApp.Admin.User, MyApp.Admin, "View")
-      "user"
-
-      iex> Phoenix.Template.module_to_template_root(MyApp.View, MyApp, "View")
-      ""
-
-      iex> Phoenix.Template.module_to_template_root(MyApp.View, MyApp.View, "View")
-      ""
-
-  """
-  def module_to_template_root(module, base, suffix) do
-    module
-    |> unsuffix(suffix)
-    |> Module.split()
-    |> Enum.drop(length(Module.split(base)))
-    |> Enum.map(&Macro.underscore/1)
-    |> join_paths
-  end
-
-  defp join_paths([]), do: ""
-  defp join_paths(paths), do: Path.join(paths)
-
-  @doc """
-  Returns all template paths in a given template root.
-  """
-  @spec find_all(root, pattern :: String.t(), %{atom => module}) :: [path]
-  def find_all(root, pattern \\ @default_pattern, engines \\ engines()) do
-    extensions = engines |> Map.keys() |> Enum.join(",")
-
-    root
-    |> Path.join(pattern <> ".{#{extensions}}")
-    |> Path.wildcard()
-  end
-
-  @doc """
-  Returns the hash of all template paths in the given root.
-
-  Used by Phoenix to check if a given root path requires recompilation.
-  """
-  @spec hash(root, pattern :: String.t(), %{atom => module}) :: binary
-  def hash(root, pattern \\ @default_pattern, engines \\ engines()) do
-    find_all(root, pattern, engines)
-    |> Enum.sort()
-    |> :erlang.md5()
-  end
-
-  @doc false
-  def raise_template_not_found(view_module, template, assigns) do
-    {root, pattern, names} = view_module.__templates__()
-
-    raise UndefinedError,
-      assigns: Map.drop(assigns, @private_assigns),
-      available: names,
-      template: template,
-      root: root,
-      pattern: pattern,
-      module: view_module
-  end
-
-  @doc false
-  def resource_name(alias, suffix \\ "") do
-    alias
-    |> to_string()
-    |> Module.split()
-    |> List.last()
-    |> unsuffix(suffix)
-    |> Macro.underscore()
-  end
-
-  @doc false
-  defp unsuffix(value, suffix) do
-    string = to_string(value)
-    suffix_size = byte_size(suffix)
-    prefix_size = byte_size(string) - suffix_size
-
-    case string do
-      <<prefix::binary-size(prefix_size), ^suffix::binary>> -> prefix
-      _ -> string
-    end
-  end
-
-  defp compile(path, root, engines) do
-    name = template_path_to_name(path, root)
-    defp = String.to_atom(name)
-    ext = Path.extname(path) |> String.trim_leading(".") |> String.to_atom()
-    engine = Map.fetch!(engines, ext)
-    quoted = engine.compile(path, name)
-
-    {name, engine,
-     quote do
-       @file unquote(path)
-       @external_resource unquote(path)
-
-       defp unquote(defp)(var!(assigns)) do
-         _ = var!(assigns)
-         unquote(quoted)
-       end
-
-       defp render_template(unquote(name), assigns) do
-         unquote(defp)(assigns)
-       end
-     end}
   end
 end

@@ -116,7 +116,7 @@ defmodule Phoenix.View do
   more about format encoders in `Phoenix.Template` documentation.
   """
 
-  alias Phoenix.{Template}
+  alias Phoenix.Template
 
   @doc """
   When used, defines the current module as a main view module.
@@ -158,9 +158,19 @@ defmodule Phoenix.View do
 
     quote do
       import Phoenix.View
-      use Phoenix.Template, Phoenix.View.__template_options__(__MODULE__, unquote(opts))
+      Phoenix.View.__setup__(__MODULE__, unquote(opts))
 
-      @before_compile Phoenix.View
+      @doc """
+      Callback invoked when no template is found.
+      By default it raises but can be customized
+      to render a particular template.
+      """
+      @spec template_not_found(binary, map) :: no_return
+      def template_not_found(template, assigns) do
+        Phoenix.View.__not_found__!(__MODULE__, template, assigns)
+      end
+
+      defoverridable template_not_found: 2
 
       @doc """
       Renders the given template locally.
@@ -235,7 +245,6 @@ defmodule Phoenix.View do
       plug :put_layout, "blog.html"
 
   """
-  @deprecated "Use Phoenix.Component instead"
   def render_layout(module, template, assigns, do: block) do
     assigns =
       assigns
@@ -378,7 +387,6 @@ defmodule Phoenix.View do
   render for. For example, for the `UserView`, create the `scripts.html.eex`
   file at `your_app_web/templates/user/`.
   '''
-  @deprecated "Use function_exported?/3 instead"
   def render_existing(module, template, assigns \\ []) do
     assigns = assigns |> Map.new() |> Map.put(:__phx_render_existing__, {module, template})
     render(module, template, assigns)
@@ -491,16 +499,127 @@ defmodule Phoenix.View do
     end
   end
 
+  @doc """
+  Converts the template path into the template name.
+
+  ## Examples
+
+      iex> Phoenix.View.template_path_to_name(
+      ...>   "lib/templates/admin/users/show.html.eex",
+      ...>   "lib/templates"
+      ...> )
+      "admin/users/show.html"
+
+  """
+  @spec template_path_to_name(Path.t, Path.t) :: Path.t
+  def template_path_to_name(path, root) do
+    path
+    |> Path.rootname()
+    |> Path.relative_to(root)
+  end
+
+  @doc """
+  Converts a module, without the suffix, to a template root.
+
+  ## Examples
+
+      iex> Phoenix.View.module_to_template_root(MyApp.UserView, MyApp, "View")
+      "user"
+
+      iex> Phoenix.View.module_to_template_root(MyApp.Admin.User, MyApp, "View")
+      "admin/user"
+
+      iex> Phoenix.View.module_to_template_root(MyApp.Admin.User, MyApp.Admin, "View")
+      "user"
+
+      iex> Phoenix.View.module_to_template_root(MyApp.View, MyApp, "View")
+      ""
+
+      iex> Phoenix.View.module_to_template_root(MyApp.View, MyApp.View, "View")
+      ""
+
+  """
+  def module_to_template_root(module, base, suffix) do
+    module
+    |> unsuffix(suffix)
+    |> Module.split()
+    |> Enum.drop(length(Module.split(base)))
+    |> Enum.map(&Macro.underscore/1)
+    |> join_paths()
+  end
+
+  defp join_paths([]), do: ""
+  defp join_paths(paths), do: Path.join(paths)
+
+  defp unsuffix(value, suffix) do
+    string = to_string(value)
+    suffix_size = byte_size(suffix)
+    prefix_size = byte_size(string) - suffix_size
+
+    case string do
+      <<prefix::binary-size(prefix_size), ^suffix::binary>> -> prefix
+      _ -> string
+    end
+  end
+
+  ## Exceptions
+
+  # Defined on Phoenix.Template for backwards compatibility
+  defmodule Elixir.Phoenix.Template.UndefinedError do
+    @moduledoc """
+    Exception raised when a template cannot be found.
+    """
+    defexception [:available, :template, :module, :root, :assigns, :pattern]
+
+    def message(exception) do
+      "Could not render #{inspect(exception.template)} for #{inspect(exception.module)}, " <>
+        "please define a matching clause for render/2 or define a template at " <>
+        "#{inspect(Path.join(Path.relative_to_cwd(exception.root), exception.pattern))}. " <>
+        available_templates(exception.available) <>
+        "\nAssigns:\n\n" <>
+        inspect(exception.assigns) <>
+        "\n\nAssigned keys: #{inspect(Map.keys(exception.assigns))}\n"
+    end
+
+    defp available_templates([]), do: "No templates were compiled for this module."
+
+    defp available_templates(available) do
+      "The following templates were compiled:\n\n" <>
+        Enum.map_join(available, "\n", &"* #{&1}") <>
+        "\n"
+    end
+  end
+
+  @private_assigns [:__phx_template_not_found__]
+
   @doc false
-  def __template_options__(module, opts) do
+  def __not_found__!(view_module, template, assigns) do
+    {root, pattern, names} = view_module.__templates__()
+
+    raise Template.UndefinedError,
+      assigns: Map.drop(assigns, @private_assigns),
+      available: names,
+      template: template,
+      root: root,
+      pattern: pattern,
+      module: view_module
+  end
+
+  ## On use callbacks
+
+  @doc false
+  def __setup__(module, opts) do
     if Module.get_attribute(module, :view_resource) do
       raise ArgumentError,
             "use Phoenix.View is being called twice in the module #{module}. " <>
               "Make sure to call it only once per module"
     else
-      view_resource = String.to_atom(Phoenix.Template.resource_name(module, "View"))
+      view_resource = String.to_atom(resource_name(module, "View"))
       Module.put_attribute(module, :view_resource, view_resource)
     end
+
+    Module.put_attribute(module, :before_compile, Phoenix.View)
+    Module.put_attribute(module, :before_compile, Phoenix.Template)
 
     root = opts[:root] || raise(ArgumentError, "expected :root to be given as an option")
     path = opts[:path]
@@ -515,9 +634,20 @@ defmodule Phoenix.View do
         |> Module.concat()
       end
 
-    root_path =
-      Path.join(root, path || Template.module_to_template_root(module, namespace, "View"))
+    root = Path.join(root, path || module_to_template_root(module, namespace, "View"))
+    Module.put_attribute(module, :phoenix_root, Path.relative_to_cwd(root))
+    Module.put_attribute(module, :phoenix_pattern, Keyword.get(opts, :pattern, "*"))
 
-    [root: root_path] ++ Keyword.take(opts, [:pattern, :template_engines])
+    engines = Enum.into(Keyword.get(opts, :template_engines, []), Phoenix.Template.engines())
+    Module.put_attribute(module, :phoenix_template_engines, engines)
+  end
+
+  defp resource_name(alias, suffix) do
+    alias
+    |> to_string()
+    |> Module.split()
+    |> List.last()
+    |> unsuffix(suffix)
+    |> Macro.underscore()
   end
 end

@@ -19,10 +19,23 @@ defmodule Phoenix.Template.EExEngine do
         end
 
         trim =
-          if trim = Application.get_env(:phoenix_view, :trim_on_html_eex_engine) == nil do
-            Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
-          else
-            trim
+          case Application.get_env(:phoenix_template, :trim_on_html_eex_engine) do
+            nil ->
+              case Application.get_env(:phoenix_view, :trim_on_html_eex_engine) do
+                nil ->
+                  Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
+
+                boolean ->
+                  # TODO: Uncomment once :phoenix_template is extracted
+                  # IO.warn(
+                  #   "config :phoenix_view, :trim_on_html_eex_engine is deprecated, please use config :phoenix_template, :trim_on_html_eex_engine instead"
+                  # )
+
+                  boolean
+              end
+
+            boolean ->
+              boolean
           end
 
         [engine: Phoenix.HTML.Engine, trim: trim]
