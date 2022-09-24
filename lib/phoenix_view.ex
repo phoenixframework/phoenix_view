@@ -84,18 +84,22 @@ defmodule Phoenix.View do
   Then, for each view, you must follow the these steps (we will assume the
   current view is called `MyApp.MyView`):
 
-    1. Remove any calls to `render_layout` and `render_existing` from
-       the templates in this view according to their deprecation notice
+    1. Replace `render_existing` calls by `function_exported?/3` checks,
+       according to the `render_existing` documentation.
 
     2. Replace `use MyApp, :view` by `use MyApp, :html` and invoke
        `embed_template "my_view"`
 
-    3. Your templates may know break if they are calling `render/2`
+    3. Your templates may now break if they are calling `render/2`.
        You can address this by replacing `render/2` by a function
        component. For instance, `render("_form.html", changeset: @changeset, user: @user)`
        can now be called as `<.form changeset={@changeset} user={@user} />`.
        If passing all assigns, `render("_form.html", assigns)` becomes
        `<%= _form(assigns) %>`
+
+    4. Your templates may now break if they are calling `render_layout/4`.
+       You can address this by converting the layout into a function component
+       that receives its contents as a slot
 
   Now you are using components! Once you convert all views, you should
   be able to remove `Phoenix.View` as a dependency from your project.
@@ -281,7 +285,7 @@ defmodule Phoenix.View do
       plug :put_layout, "blog.html"
 
   """
-  @doc deprecated: "Use Phoenix.Component with slots instead"
+  @deprecated "Use Phoenix.Component with slots instead"
   def render_layout(module, template, assigns, do: block) do
     assigns =
       assigns
@@ -424,7 +428,6 @@ defmodule Phoenix.View do
   render for. For example, for the `UserView`, create the `scripts.html.eex`
   file at `your_app_web/templates/user/`.
   '''
-  @doc deprecated: "Use function_exported? instead"
   def render_existing(module, template, assigns \\ []) do
     assigns = assigns |> Map.new() |> Map.put(:__phx_render_existing__, {module, template})
     render(module, template, assigns)
