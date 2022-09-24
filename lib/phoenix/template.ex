@@ -1,21 +1,14 @@
 defmodule Phoenix.Template do
   @moduledoc """
-  Templates are used by Phoenix when rendering responses.
+  Templates are markup languages that are compiled to Elixir code.
 
-  Since many views render significant content, for example a whole
-  HTML file, it is common to put these files into a particular directory,
-  typically "APP_web/templates".
+  This module provides functions for loading and compiling templates
+  from disk. A markup language is compiled to Elixir code via an engine.
+  See `Phoenix.Template.Engine`.
 
-  This module provides conveniences for reading all files from a
-  particular directory and embedding them into a single module.
-
-  `Phoenix.Template` will define a private function named `render_template/2`
-  with one clause per file system template. You are responsible to expose
-  it appropriately, as shown above.
-
-  In practice, developers rarely use `Phoenix.Template` directly.
-  Instead they use `Phoenix.View` which wraps the template functionality
-  and adds some extra conveniences.
+  In practice, developers rarely use `Phoenix.Template` directly. Instead,
+  libraries such as `Phoenix.View` and `Phoenix.LiveView` use it as a
+  building block.
 
   ## Custom Template Engines
 
@@ -35,7 +28,9 @@ defmodule Phoenix.Template do
 
   Besides template engines, Phoenix has the concept of format encoders.
   Format encoders work per format and are responsible for encoding a
-  given format to string once the view layer finishes processing.
+  given format to a string. For example, when rendering JSON, your
+  templates may return a regular Elixir map. Then the JSON format
+  encoder is invoked to convert it to JSON.
 
   A format encoder must export a function called `encode_to_iodata!/1`
   which receives the rendering artifact and returns iodata.
@@ -60,13 +55,6 @@ defmodule Phoenix.Template do
   end
 
   ## Configuration API
-
-  @engines [
-    eex: Phoenix.Template.EExEngine,
-    exs: Phoenix.Template.ExsEngine,
-    leex: Phoenix.LiveView.Engine,
-    heex: Phoenix.LiveView.HTMLEngine
-  ]
 
   @doc """
   Returns the format encoder for the given template.
@@ -119,7 +107,7 @@ defmodule Phoenix.Template do
 
       :error ->
         engines =
-          @engines
+          default_engines()
           |> Keyword.merge(raw_config(:template_engines, []))
           |> Enum.filter(fn {_, v} -> v end)
           |> Enum.into(%{})
@@ -127,6 +115,15 @@ defmodule Phoenix.Template do
         Application.put_env(:phoenix_view, :compiled_template_engines, engines)
         engines
     end
+  end
+
+  defp default_engines do
+    [
+      eex: Phoenix.Template.EExEngine,
+      exs: Phoenix.Template.ExsEngine,
+      leex: Phoenix.LiveView.Engine,
+      heex: Phoenix.LiveView.HTMLEngine
+    ]
   end
 
   defp raw_config(name, fallback) do

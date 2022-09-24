@@ -6,11 +6,11 @@ defmodule Phoenix.Template.EExEngine do
   @behaviour Phoenix.Template.Engine
 
   def compile(path, name) do
-    EEx.compile_file(path, [line: 1] ++ options_for(name))
+    EEx.compile_file(path, [line: 1] ++ options_for(path))
   end
 
-  defp options_for(name) do
-    case Phoenix.Template.format_encoder(name) do
+  defp options_for(path) do
+    case Phoenix.Template.format_encoder(Path.rootname(path)) do
       Phoenix.HTML.Engine ->
         unless Code.ensure_loaded?(Phoenix.HTML.Engine) do
           raise "could not load Phoenix.HTML.Engine to use with .html.eex templates. " <>

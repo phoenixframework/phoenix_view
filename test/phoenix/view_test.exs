@@ -360,6 +360,7 @@ defmodule Phoenix.ViewTest do
   end
 
   test "custom view renders custom templates" do
-    assert CustomEngineView.render("custom", %{}) == "from foo"
+    assert CustomEngineView.render("show.html", %{message: "foo"}) ==
+             {:safe, ["<div>Show! ", "foo", "</div>\n", "\n"]}
   end
 end
