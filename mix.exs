@@ -1,7 +1,7 @@
 defmodule PhoenixView.MixProject do
   use Mix.Project
 
-  @version "1.1.2"
+  @version "1.2.0-dev"
   @source_url "https://github.com/phoenixframework/phoenix_view"
 
   def project do
@@ -9,7 +9,7 @@ defmodule PhoenixView.MixProject do
       app: :phoenix_view,
       version: @version,
       elixir: "~> 1.9",
-      description: "Views and template rendering for Phoenix",
+      description: "The view layer in Phoenix v1.0-v1.6 apps",
       docs: docs(),
       deps: deps(),
       package: package()
@@ -34,6 +34,7 @@ defmodule PhoenixView.MixProject do
   defp deps do
     [
       {:phoenix_html, "~> 2.14.2 or ~> 3.0", optional: true},
+      {:phoenix_template, github: "phoenixframework/phoenix_template"},
       {:jason, "~> 1.0", only: :test},
       {:ex_doc, "~> 0.22", only: :docs}
     ]
