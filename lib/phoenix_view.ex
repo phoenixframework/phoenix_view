@@ -534,6 +534,7 @@ defmodule Phoenix.View do
 
   defp encode(content, template) do
     "." <> format = Path.extname(template)
+
     if encoder = Template.format_encoder(format) do
       encoder.encode_to_iodata!(content)
     else
