@@ -59,9 +59,9 @@ defmodule Phoenix.View do
   With `Phoenix.LiveView`, `Phoenix.View` has been replaced by
   `Phoenix.Component`. `Phoenix.Component` is capable of embedding templates
   on disk as functions components, using the `embed_templates` function.
-  For example, in Phoenix v1.7+, the `YourApp.UserView` above would be written as:
+  For example, in Phoenix v1.7+, the `YourAppWeb.UserView` above would be written as:
 
-      defmodule YourApp.UserHTML do
+      defmodule YourAppWeb.UserHTML do
         use YourAppWeb, :html
 
         embed_templates "users"
