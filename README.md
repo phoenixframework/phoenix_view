@@ -14,7 +14,7 @@ You can install `phoenix_view` by adding it to your list of dependencies in `mix
 ```elixir
 def deps do
   [
-    {:phoenix_view, "~> 1.0"}
+    {:phoenix_view, "~> 2.0"}
   ]
 end
 ```
