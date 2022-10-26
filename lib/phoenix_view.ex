@@ -79,7 +79,7 @@ defmodule Phoenix.View do
 
   The first step is to define `def html` in your `lib/my_app_web.ex` module.
   This function is similar to `def view`, but it replaces `use Phoenix.View`
-  by `import Phoenix.View` and also adds `use Phoenix.Component`.
+  by `use Phoenix.Component` (requires LiveView 0.18.3 or later).
 
   Then, for each view, you must follow the these steps (we will assume the
   current view is called `MyApp.MyView`):
