@@ -54,71 +54,6 @@ defmodule Phoenix.View do
       Phoenix.View.render_to_string(YourApp.UserView, "index.html", name: "John Doe")
       #=> "Hello John Doe"
 
-  ## Replaced by `Phoenix.Component`
-
-  With `Phoenix.LiveView`, `Phoenix.View` has been replaced by
-  `Phoenix.Component`. `Phoenix.Component` is capable of embedding templates
-  on disk as functions components, using the `embed_templates` function.
-  For example, in Phoenix v1.7+, the `YourAppWeb.UserView` above would be written as:
-
-      defmodule YourAppWeb.UserHTML do
-        use YourAppWeb, :html
-
-        embed_templates "users"
-      end
-
-  Where `YourAppWeb` is mostly `use Phoenix.Component` and additional helpers.
-  The benefit of `Phoenix.Component` is that it unifies the rendering of
-  traditional request/response life cycles with the realtime LiveView model.
-
-  ### Migrating to Phoenix.Component
-
-  If you want to migrate your current components to views, it is relatively
-  straight-forward and it can be done in few steps. The good news is also
-  that you can migrate each view one at a time.
-
-  The first step is to define `def html` in your `lib/my_app_web.ex` module.
-  This function is similar to `def view`, but it replaces `use Phoenix.View`
-  by `use Phoenix.Component` (requires LiveView 0.18.3 or later).
-
-  Then, for each view, you must follow the these steps (we will assume the
-  current view is called `MyApp.MyView`):
-
-    1. Replace `render_existing` calls by `function_exported?/3` checks,
-       according to the `render_existing` documentation.
-
-    2. Replace `use MyApp, :view` by `use MyApp, :html` and invoke
-       `embed_template "my_view"`
-
-    3. Your templates may now break if they are calling `render/2`.
-       You can address this by replacing `render/2` with a function
-       component. For instance, `render("_form.html", changeset: @changeset, user: @user)`
-       can now be called as `<.form changeset={@changeset} user={@user} />`.
-       If passing all assigns, `render("_form.html", assigns)` becomes
-       `<%= _form(assigns) %>`
-
-    4. Your templates may now break if they are calling `render_layout/4`.
-       You can address this by converting the layout into a function component
-       that receives its contents as a slot
-
-  Now you are using components! Once you convert all views, you should
-  be able to remove `Phoenix.View` as a dependency from your project.
-  Remove both `def view` and `import Phoenix.View` from `def html`
-  in your `lib/my_app_web.ex` module. Now, compilation may fail if you
-  are using certain functions:
-
-    * Replace `render/3` with a function component. For instance,
-      `render(OtherView, "_form.html", changeset: @changeset, user: @user)`
-      can now be called as `<OtherView.form changeset={@changeset} user={@user} />`.
-      If passing all assigns, `render(OtherView, "_form.html", assigns)`
-      becomes `<%= OtherView._form(assigns) %>`.
-
-    * If you are using `Phoenix.View` for APIs, you can remove `Phoenix.View`
-      altogether. Instead of `def render("index.html", assigns)`, use `def users(assigns)`.
-      Instead of `def render("show.html", assigns)`, do `def user(assigns)`.
-      Instead `render_one`/`render_many`, call the `users/1` and `user/1` functions
-      directly.
-
   ## Rendering and formats
 
   `Phoenix.View` renders template.
@@ -160,6 +95,75 @@ defmodule Phoenix.View do
   Phoenix ships with some template engines and format encoders, which
   can be further configured in the Phoenix application. You can read
   more about format encoders in `Phoenix.Template` documentation.
+
+  ## Replaced by `Phoenix.Component`
+
+  With `Phoenix.LiveView`, `Phoenix.View` has been replaced by
+  `Phoenix.Component`. `Phoenix.Component` is capable of embedding templates
+  on disk as functions components, using the `embed_templates` function.
+  For example, in Phoenix v1.7+, the `YourAppWeb.UserView` above would be
+  written as:
+
+      defmodule YourAppWeb.UserHTML do
+        use YourAppWeb, :html
+
+        embed_templates "users"
+      end
+
+  The benefit of `Phoenix.Component` is that it unifies the rendering of
+  traditional request/response life cycles with the composable component
+  model provided by LiveView.
+
+  ### Migrating to Phoenix.Component
+
+  If you want to migrate your current components to views, it can be done in
+  few steps. You should also be able to migrate one view at a time.
+
+  The first step is to define `def html` in your `lib/my_app_web.ex` module.
+  This function is similar to `def view`, but it replaces `use Phoenix.View`
+  by `use Phoenix.Component` (requires LiveView 0.18.3 or later). We also
+  recomend to add `import Phoenix.View` inside `def html` while migrating.
+
+  Then, for each view, you must follow these steps (we will assume the
+  current view is called `MyAppWeb.MyView`):
+
+    1. Replace `render_existing/3` calls by `function_exported?/3` checks,
+       according to the `render_existing` documentation.
+
+    2. Replace `use MyApp, :view` by `use MyApp, :html` and invoke
+       `embed_template "../templates/my"`. Alternatively, you can move
+       both the HTML file and its templates to the `controllers` directory,
+       to align with Phoenix v1.7 conventions.
+
+    3. Your templates may now break if they are calling `render/2`.
+       You can address this by replacing `render/2` with a function
+       component. For instance, `render("_form.html", changeset: @changeset, user: @user)`
+       must now be called as `<.form changeset={@changeset} user={@user} />`.
+       If passing all assigns, `render("_form.html", assigns)` becomes
+       `<%= _form(assigns) %>`
+
+    4. Your templates may now break if they are calling `render_layout/4`.
+       You can address this by converting the layout into a function component
+       that receives its contents as a slot
+
+  Now you are using components! Once you convert all views, you should
+  be able to remove `Phoenix.View` as a dependency from your project.
+  Remove `def view` and also remove the `import Phoenix.View` from
+  `def html` in your `lib/my_app_web.ex` module. When doing so,
+  compilation may fail if you are using certain functions:
+
+    * Replace `render/3` with a function component. For instance,
+      `render(OtherView, "_form.html", changeset: @changeset, user: @user)`
+      can now be called as `<OtherView.form changeset={@changeset} user={@user} />`.
+      If passing all assigns, `render(OtherView, "_form.html", assigns)`
+      becomes `<%= OtherView._form(assigns) %>`.
+
+    * If you are using `Phoenix.View` for APIs, you can remove `Phoenix.View`
+      altogether. Instead of `def render("index.html", assigns)`, use `def users(assigns)`.
+      Instead of `def render("show.html", assigns)`, do `def user(assigns)`.
+      Instead `render_one`/`render_many`, call the `users/1` and `user/1` functions
+      directly.
+
   """
 
   alias Phoenix.Template
