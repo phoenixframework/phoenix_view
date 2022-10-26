@@ -113,16 +113,11 @@ defmodule Phoenix.View do
       If passing all assigns, `render(OtherView, "_form.html", assigns)`
       becomes `<%= OtherView._form(assigns) %>`.
 
-    * If you are using `Phoenix.View` for APIs, you also want to define
-      a `def json` in your `lib/my_app_web.ex` as follows:
-
-          ```elixir
-          def json do
-            quote do
-              use Phoenix.JSON
-            end
-          end
-          ```
+    * If you are using `Phoenix.View` for APIs, you can remove `Phoenix.View`
+      altogether. Instead of `def render("index.html", assigns)`, use `def users(assigns)`.
+      Instead of `def render("show.html", assigns)`, do `def user(assigns)`.
+      Instead `render_one`/`render_many`, call the `users/1` and `user/1` functions
+      directly.
 
   ## Rendering and formats
 
