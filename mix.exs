@@ -34,7 +34,7 @@ defmodule PhoenixView.MixProject do
   defp deps do
     [
       {:phoenix_html, "~> 2.14.2 or ~> 3.0", optional: true},
-      {:phoenix_template, github: "phoenixframework/phoenix_template"},
+      {:phoenix_template, "~> 1.0"},
       {:jason, "~> 1.0", only: :test},
       {:ex_doc, "~> 0.22", only: :docs}
     ]
