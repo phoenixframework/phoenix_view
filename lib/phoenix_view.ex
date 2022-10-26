@@ -54,7 +54,7 @@ defmodule Phoenix.View do
       Phoenix.View.render_to_string(YourApp.UserView, "index.html", name: "John Doe")
       #=> "Hello John Doe"
 
-  ## Replaced by `Phoenix.Comopnent`
+  ## Replaced by `Phoenix.Component`
 
   With `Phoenix.LiveView`, `Phoenix.View` has been replaced by
   `Phoenix.Component`. `Phoenix.Component` is capable of embedding templates
@@ -77,7 +77,7 @@ defmodule Phoenix.View do
   straight-forward and it can be done in few steps. The good news is also
   that you can migrate each view one at a time.
 
-  The first step is to define `def html do` in your `lib/my_app_web.ex` module.
+  The first step is to define `def html` in your `lib/my_app_web.ex` module.
   This function is similar to `def view`, but it replaces `use Phoenix.View`
   by `import Phoenix.View` and also adds `use Phoenix.Component`.
 
@@ -91,7 +91,7 @@ defmodule Phoenix.View do
        `embed_template "my_view"`
 
     3. Your templates may now break if they are calling `render/2`.
-       You can address this by replacing `render/2` by a function
+       You can address this by replacing `render/2` with a function
        component. For instance, `render("_form.html", changeset: @changeset, user: @user)`
        can now be called as `<.form changeset={@changeset} user={@user} />`.
        If passing all assigns, `render("_form.html", assigns)` becomes
@@ -107,7 +107,7 @@ defmodule Phoenix.View do
   in your `lib/my_app_web.ex` module. Now, compilation may fail if you
   are using certain functions:
 
-    * Replace `render/3` by a function component. For instance,
+    * Replace `render/3` with a function component. For instance,
       `render(OtherView, "_form.html", changeset: @changeset, user: @user)`
       can now be called as `<OtherView.form changeset={@changeset} user={@user} />`.
       If passing all assigns, `render(OtherView, "_form.html", assigns)`
