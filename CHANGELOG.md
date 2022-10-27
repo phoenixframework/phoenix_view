@@ -3,8 +3,7 @@
 ## 2.0.0 (2022-10-26)
 
   * Extract `Phoenix.Template` to a separete dependency: `phoenix_template`
-  * Document falling out of fasion in favor of `Phoenix.Component`
-  * Document replacing with `Phoenix.Component`
+  * Document replacing `Phoenix.View` with `Phoenix.Component`
   * Deprecate `Phoenix.View.render_layout/4` in favor of `Phoenix.Component` with slots instead
 
 ## 1.1.2 (2022-02-02)
