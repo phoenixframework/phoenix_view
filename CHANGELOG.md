@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2.0.0 (2022-10-26)
+
+  * Extract `Phoenix.Template` to a separete dependency: `phoenix_template`
+  * Document replacing `Phoenix.View` with `Phoenix.Component`
+  * Deprecate `Phoenix.View.render_layout/4` in favor of `Phoenix.Component` with slots instead
+
 ## 1.1.2 (2022-02-02)
 
   * Fix dialyzer warnings on `template_not_found`
