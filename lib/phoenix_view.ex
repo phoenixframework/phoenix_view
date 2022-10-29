@@ -144,7 +144,7 @@ defmodule Phoenix.View do
 
     4. Your templates may now break if they are calling `render_layout/4`.
        You can address this by converting the layout into a function component
-       that receives its contents as a slot
+       that receives its contents as a slot. See `render_layout/4` docs
 
   Now you are using components! Once you convert all views, you should
   be able to remove `Phoenix.View` as a dependency from your project.
@@ -251,7 +251,7 @@ defmodule Phoenix.View do
 
   defp expand_alias(other, _env), do: other
 
-  @doc """
+  @doc ~S'''
   Renders the given layout passing the given `do/end` block
   as `@inner_content`.
 
@@ -283,8 +283,39 @@ defmodule Phoenix.View do
 
       plug :put_layout, "blog.html"
 
-  """
-  @deprecated "Use Phoenix.Component with slots instead"
+  ## Alternatives
+
+  `render_layout/4` is discouraged in favor of components.
+  If you need to share functionality, you can create components
+  with bits of functionality you want to reuse. For example,
+  the code above could be rewritten with a layout component:
+
+      def layout(assigns) do
+        ~H"""
+        <div ...>
+          <%= render_slot(@sidebar) %>
+          <%= render_slot(@inner_block) %>
+        </div>
+        """
+      end
+
+  Which can be used as:
+
+      <.layout>
+        Main content
+      </.layout>
+
+  Or:
+
+      <.layout>
+        <:sidebar>Additional sidebar content</:sidebar>
+        Main content
+      </.layout>
+
+  The advantage of using components is that you can handle all
+  of the sidebar markup inside the parent layout component,
+  instead of spreading it across multiple files.
+  '''
   def render_layout(module, template, assigns, do: block) do
     assigns =
       assigns

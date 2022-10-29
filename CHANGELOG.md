@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2.0.1 (2022-10-29)
+
+  * Undeprecate `Phoenix.View.render_layout/4`
+
 ## 2.0.0 (2022-10-26)
 
   * Extract `Phoenix.Template` to a separete dependency: `phoenix_template`
