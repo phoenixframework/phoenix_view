@@ -116,7 +116,7 @@ defmodule Phoenix.View do
 
   ### Migrating to Phoenix.Component
 
-  If you want to migrate your current components to views, it can be done in
+  If you want to migrate your current views to components, it can be done in
   few steps. You should also be able to migrate one view at a time.
 
   The first step is to define `def html` in your `lib/my_app_web.ex` module.
