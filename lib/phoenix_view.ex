@@ -207,10 +207,12 @@ defmodule Phoenix.View do
       end
 
     quote do
-      use Phoenix.Template
-
-      import Phoenix.View
+      # Register setup first, because its before_compile
+      # needs to run before Phoenix.Template callback.
       Phoenix.View.__setup__(__MODULE__, unquote(opts))
+
+      use Phoenix.Template
+      import Phoenix.View
 
       @doc """
       Callback invoked when no template is found.

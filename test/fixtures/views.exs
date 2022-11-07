@@ -12,6 +12,8 @@ defmodule MyApp.LayoutView do
   def default_title do
     "MyApp"
   end
+
+  [{Phoenix.Template, :__before_compile__}, {Phoenix.View, :__before_compile__}] = @before_compile
 end
 
 defmodule MyApp.User do
