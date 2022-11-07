@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2.0.2 (2022-11-07)
+
+  * Fix regression where directories were not being tracked for new files
+
 ## 2.0.1 (2022-10-29)
 
   * Undeprecate `Phoenix.View.render_layout/4`
