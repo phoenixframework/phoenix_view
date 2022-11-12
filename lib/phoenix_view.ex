@@ -131,7 +131,7 @@ defmodule Phoenix.View do
        according to the `render_existing` documentation.
 
     2. Replace `use MyApp, :view` by `use MyApp, :html` and invoke
-       `embed_template "../templates/my"`. Alternatively, you can move
+       `embed_templates "../templates/my"`. Alternatively, you can move
        both the HTML file and its templates to the `controllers` directory,
        to align with Phoenix v1.7 conventions.
 
