@@ -1,10 +1,12 @@
 defmodule Phoenix.View do
   @moduledoc """
-  A module for generating `render/2` functions from templates in disk.
+  A module for generating `render/2` functions from templates on disk.
 
-  With `Phoenix.LiveView`, this module has fallen out of fashion in favor
-  of `Phoenix.Component`. See the "Replaced by `Phoenix.Component`" section
-  below.
+  With design patterns introduced by `Phoenix.LiveView`, this module has fallen
+  out of fashion in favor of `Phoenix.Component`, even in non LiveView
+  applications.
+
+  See the "Replaced by `Phoenix.Component`" section below.
 
   ## Examples
 
@@ -35,7 +37,7 @@ defmodule Phoenix.View do
 
   Then you could use the definition above to define any view in your application:
 
-      defmodule YourApp.UserView do
+      defmodule YourAppWeb.UserView do
         use YourAppWeb, :view
       end
 
@@ -56,7 +58,7 @@ defmodule Phoenix.View do
 
   ## Rendering and formats
 
-  `Phoenix.View` renders template.
+  `Phoenix.View` renders templates.
 
   A template has a name, which also contains a format. For example,
   in the previous section we have rendered the "index.html" template:
@@ -74,8 +76,8 @@ defmodule Phoenix.View do
   how they are encoded. For example, if you want to render JSON data, we
   could do so by adding a "show.json" entry to `render/2` in our view:
 
-      defmodule YourApp.UserView do
-        use YourApp.View
+      defmodule YourAppWeb.UserView do
+        use YourAppWeb, :view
 
         def render("show.json", %{user: user}) do
           %{name: user.name, address: user.address}
@@ -98,16 +100,17 @@ defmodule Phoenix.View do
 
   ## Replaced by `Phoenix.Component`
 
-  With `Phoenix.LiveView`, `Phoenix.View` has been replaced by
-  `Phoenix.Component`. `Phoenix.Component` is capable of embedding templates
-  on disk as functions components, using the `embed_templates` function.
+  In `Phoenix.LiveView`, `Phoenix.View` was replaced by `Phoenix.Component`.
+  With Phoenix v1.7+ we can also use `Phoenix.Component` to render traditional
+  templates as functional components, using the `embed_templates` function.
+
   For example, in Phoenix v1.7+, the `YourAppWeb.UserView` above would be
   written as:
 
       defmodule YourAppWeb.UserHTML do
         use YourAppWeb, :html
 
-        embed_templates "users"
+        embed_templates "users/*"
       end
 
   The benefit of `Phoenix.Component` is that it unifies the rendering of
@@ -116,8 +119,11 @@ defmodule Phoenix.View do
 
   ### Migrating to Phoenix.Component
 
-  If you want to migrate your current views to components, it can be done in
-  few steps. You should also be able to migrate one view at a time.
+  Migrating your current views to components be done in a few steps. You should
+  also be able to migrate one view at a time.
+
+  > It may be helpful to generate a new project using Phoenix v1.7+ to compare
+  > code samples during this process.
 
   The first step is to define `def html` in your `lib/my_app_web.ex` module.
   This function is similar to `def view`, but it replaces `use Phoenix.View`
@@ -148,6 +154,7 @@ defmodule Phoenix.View do
 
   Now you are using components! Once you convert all views, you should
   be able to remove `Phoenix.View` as a dependency from your project.
+
   Remove `def view` and also remove the `import Phoenix.View` from
   `def html` in your `lib/my_app_web.ex` module. When doing so,
   compilation may fail if you are using certain functions:
