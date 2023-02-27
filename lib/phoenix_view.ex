@@ -117,6 +117,20 @@ defmodule Phoenix.View do
   traditional request/response life cycles with the composable component
   model provided by LiveView.
 
+  The table below summarizes how the defaults changed from Phoenix v1.6 to v1.7:
+
+  | Feature                          | Phoenix v1.6                            | Phoenix v1.7                                  |
+  | -------------------------------- | --------------------------------------- | --------------------------------------------- |
+  | `MyController.action/2` renders  | `MyView.render("action.html", assigns)` | `MyHTML.action(assigns)`                      |
+  | Define views at                  | `lib/my_app/views/my_view.ex`           | `lib/my_app/controllers/my_html.ex`           |
+  | At the top of your views         | `use MyAppWeb, :view`                   | `use MyAppWeb, :html`                         |
+  | Default template language        | `EEx` (`.eex` extension)                | `HEEx` (`.heex` extension)                    |
+  | To embed templates from disk     | `use Phoenix.View`                      | `use Phoenix.Component` (+ `embed_templates`) |
+  | HTML helpers (forms, links, etc) | `use Phoenix.HTML`                      | `use Phoenix.Component`                       |
+
+  However, note Phoenix v1.7 is backwards compatible with v1.6 if you want to
+  keep with the old style.
+
   ### Migrating to Phoenix.Component
 
   Migrating your current views to components be done in a few steps. You should
