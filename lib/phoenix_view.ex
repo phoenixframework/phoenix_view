@@ -4,9 +4,7 @@ defmodule Phoenix.View do
 
   With design patterns introduced by `Phoenix.LiveView`, this module has fallen
   out of fashion in favor of `Phoenix.Component`, even in non LiveView
-  applications.
-
-  See the "Replaced by `Phoenix.Component`" section below.
+  applications. See the "Replaced by `Phoenix.Component`" section below.
 
   ## Examples
 
@@ -129,7 +127,8 @@ defmodule Phoenix.View do
   | HTML helpers (forms, links, etc) | `use Phoenix.HTML`                      | `use Phoenix.Component`                       |
 
   However, note Phoenix v1.7 is backwards compatible with v1.6 if you want to
-  keep with the old style.
+  keep with the old style. The functionality in this module will be maintained
+  in the long term though for those who cannot or prefer not to migrate.
 
   ### Migrating to Phoenix.Component
 
