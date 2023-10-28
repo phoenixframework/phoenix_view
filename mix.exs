@@ -1,7 +1,7 @@
 defmodule PhoenixView.MixProject do
   use Mix.Project
 
-  @version "2.0.2"
+  @version "2.0.3"
   @source_url "https://github.com/phoenixframework/phoenix_view"
 
   def project do
@@ -33,7 +33,7 @@ defmodule PhoenixView.MixProject do
 
   defp deps do
     [
-      {:phoenix_html, "~> 2.14.2 or ~> 3.0", optional: true},
+      {:phoenix_html, "~> 2.14.2 or ~> 3.0 or ~> 4.0", optional: true},
       {:phoenix_template, "~> 1.0"},
       {:jason, "~> 1.0", only: :test},
       {:ex_doc, "~> 0.22", only: :docs}
