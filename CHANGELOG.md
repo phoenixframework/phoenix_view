@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2.0.3 (2023-10-28)
+
+  * Relax Phoenix.HTML dependency
+
 ## 2.0.2 (2022-11-07)
 
   * Fix regression where directories were not being tracked for new files
