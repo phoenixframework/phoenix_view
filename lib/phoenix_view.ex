@@ -157,7 +157,7 @@ defmodule Phoenix.View do
     3. Your templates may now break if they are calling `render/2`.
        You can address this by replacing `render/2` with a function
        component. For instance, `render("_form.html", changeset: @changeset, user: @user)`
-       must now be called as `<.form changeset={@changeset} user={@user} />`.
+       must now be called as `<._form changeset={@changeset} user={@user} />`.
        If passing all assigns, `render("_form.html", assigns)` becomes
        `<%= _form(assigns) %>`
 
