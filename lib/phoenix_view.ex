@@ -562,7 +562,7 @@ defmodule Phoenix.View do
   defp get_resource_name(assigns, view) do
     case assigns do
       %{as: as} -> as
-      _ -> view.__resource__
+      _ -> view.__resource__()
     end
   end
 
