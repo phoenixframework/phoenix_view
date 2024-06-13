@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2.0.4 (2024-06-13)
+
+  * Fix warning when using elixir v1.17
+
 ## 2.0.3 (2023-10-28)
 
   * Relax Phoenix.HTML dependency
