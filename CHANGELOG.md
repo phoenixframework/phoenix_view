@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 2.0.4 (2024-06-14)
+## 2.0.4 (2024-06-13)
 
   * Fix warning when using elixir v1.17
 
