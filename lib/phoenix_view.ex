@@ -149,7 +149,7 @@ defmodule Phoenix.View do
     1. Replace `render_existing/3` calls by `function_exported?/3` checks,
        according to the `render_existing` documentation.
 
-    2. Replace `use MyApp, :view` by `use MyApp, :html` and invoke
+    2. Replace `use MyAppWeb, :view` by `use MyAppWeb, :html` and invoke
        `embed_templates "../templates/my/*"`. Alternatively, you can move
        both the HTML file and its templates to the `controllers` directory,
        to align with Phoenix v1.7 conventions.
@@ -164,6 +164,22 @@ defmodule Phoenix.View do
     4. Your templates may now break if they are calling `render_layout/4`.
        You can address this by converting the layout into a function component
        that receives its contents as a slot. See `render_layout/4` docs
+
+    5. If you want to rename your `MyAppWeb.LayoutView` to `MyAppWeb.Layouts`
+       you will need to update the `controller` function in `MyAppWeb`, giving
+       the `use Phoenix.Controller` call a `layouts` option like so:
+
+       ```
+       use Phoenix.Controller,
+         layouts: [html: MyAppWeb.Layouts]
+       ```
+
+    6. When updating your `ErrorView`, you will also need to rename `template_not_found/2`
+       to `render/2`. You might have generated tests that will need to be
+       updated as well. You can replace `import Phoenix.View` with `import Phoenix.Template`,
+       and replace `Phoenix.View.render_to_string/3` calls with `Phoenix.Template.render_to_string/4`.
+       Lastly, if you want to rename this to `ErrorHTML`, you will need to
+       update the reference to `ErrorView` in your config for `MyAppWeb.Endpoint`.
 
   Now you are using components! Once you convert all views, you should
   be able to remove `Phoenix.View` as a dependency from your project.
