@@ -149,7 +149,7 @@ defmodule Phoenix.View do
     1. Replace `render_existing/3` calls by `function_exported?/3` checks,
        according to the `render_existing` documentation.
 
-    2. Replace `use MyApp, :view` by `use MyApp, :html` and invoke
+    2. Replace `use MyAppWeb, :view` by `use MyAppWeb, :html` and invoke
        `embed_templates "../templates/my/*"`. Alternatively, you can move
        both the HTML file and its templates to the `controllers` directory,
        to align with Phoenix v1.7 conventions.
