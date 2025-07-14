@@ -174,6 +174,13 @@ defmodule Phoenix.View do
          layouts: [html: MyAppWeb.Layouts]
        ```
 
+    6. When updating your `ErrorView`, you will also need to rename `template_not_found/2`
+       to `render/2`. You might have generated tests that will need to be
+       updated as well. You can replace `import Phoenix.View` with `import Phoenix.Template`,
+       and replace `Phoenix.View.render_to_string/3` calls with `Phoenix.Template.render_to_string/4`.
+       Lastly, if you want to rename this to `ErrorHTML`, you will need to
+       update the reference to `ErrorView` in your config for `MyAppWeb.Endpoint`.
+
   Now you are using components! Once you convert all views, you should
   be able to remove `Phoenix.View` as a dependency from your project.
 
