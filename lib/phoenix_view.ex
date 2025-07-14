@@ -165,6 +165,15 @@ defmodule Phoenix.View do
        You can address this by converting the layout into a function component
        that receives its contents as a slot. See `render_layout/4` docs
 
+    5. If you want to rename your `MyAppWeb.LayoutView` to `MyAppWeb.Layouts`
+       you will need to update the `controller` function in `MyAppWeb`, giving
+       the `use Phoenix.Controller` call a `layouts` option like so:
+
+       ```
+       use Phoenix.Controller,
+         layouts: [html: MyAppWeb.Layouts]
+       ```
+
   Now you are using components! Once you convert all views, you should
   be able to remove `Phoenix.View` as a dependency from your project.
 
