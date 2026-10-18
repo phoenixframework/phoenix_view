@@ -255,7 +255,6 @@ defmodule Phoenix.View do
       By default it raises but can be customized
       to render a particular template.
       """
-      @spec template_not_found(binary, map) :: no_return
       def template_not_found(template, assigns) do
         Phoenix.View.__not_found__!(__MODULE__, template, assigns)
       end
